@@ -1,7 +1,7 @@
 const pptxgen = require("pptxgenjs");
 const MODE = process.env.MODE;                 // "alif" (big alif madd) or "dagger" (dagger alif)
 const T = new pptxgen().ShapeType;
-const FATHA = "َ", DAGGER = "ٰ", ALIF = "ا";
+const FATHA = "\u064E", ALIF = "ا", SMALL = 0.65;   // small alif = 65% of letter size
 const FONT = "Arial", INK = "16213E", BG = "1B2A5C";
 const RING = ["E8604C", "3A8FD9", "2FB57A"];
 let pres;
@@ -38,13 +38,15 @@ function drawSlides(SLIDES) {
     s.background = { color: BG };
     deco(s);
     const n = letters.length, X = letters[n - 1];
-    const tail = MODE === "alif" ? ALIF : DAGGER;
-    const result = letters.map((l, i) => l + FATHA + (i === n - 1 ? tail : "")).join("");
+    const prefix = letters.slice(0, n - 1).map(l => l + FATHA).join("");
+    const result = MODE === "alif"
+      ? prefix + X + FATHA + ALIF
+      : [{ text: prefix + X + FATHA, options: {} }, { text: ALIF, options: { fontSize: SMALL * (n === 2 ? 90 : 66) } }];
     const CY = 2.8;
     let g, cx = [];
-    if (n === 1) g = { d: 3.4, fs: MODE === "alif" ? 130 : 150, rs: 0 };
-    else if (n === 2) g = { d: 1.9, gap: 0.7, zone: 1.0, pw: 3.0, ph: 2.2, fs: MODE === "alif" ? 78 : 90, rs: 90, plus: 0.45, aw: 0.7 };
-    else g = { d: 1.4, gap: 0.55, zone: 0.85, pw: 2.55, ph: 2.0, fs: MODE === "alif" ? 54 : 66, rs: 66, plus: 0.38, aw: 0.6 };
+    if (n === 1) g = { d: 3.4, fs: 130, rs: 0 };
+    else if (n === 2) g = { d: 1.9, gap: 0.7, zone: 1.0, pw: 3.0, ph: 2.2, fs: MODE === "alif" ? 78 : 84, rs: 90, plus: 0.45, aw: 0.7 };
+    else g = { d: 1.4, gap: 0.55, zone: 0.85, pw: 2.55, ph: 2.0, fs: MODE === "alif" ? 54 : 60, rs: 66, plus: 0.38, aw: 0.6 };
     if (n === 1) cx = [5 - g.d / 2];
     else {
       let right = n === 2 ? 9.25 : 9.35;
@@ -70,15 +72,17 @@ function drawSlides(SLIDES) {
     letters.forEach((l, i) => {
       const last = i === n - 1;
       const o = { x: cx[i], y: CY - g.d / 2, w: g.d, h: g.d, fontSize: g.fs };
-      if (last && MODE === "alif") {              // letter sits right, big alif is its own object on the left
-        const o1 = Object.assign({}, o, { x: cx[i] + 0.0046 * g.fs });
+      if (last) {                                 // letter sits right, alif is its own object on the left
+        const big = MODE === "alif";
+        const o1 = Object.assign({}, o, { x: cx[i] + (big ? 0.0046 : 0.0042) * g.fs });
         arText(s, l, Object.assign({ objectName: `L${i + 1} letter` }, o1));
         arText(s, l + FATHA, Object.assign({ objectName: `F${i + 1} fathah` }, o1));
-        arText(s, ALIF, Object.assign({ objectName: `M${i + 1} alif` }, o, { x: cx[i] - 0.0078 * g.fs }));
+        const af = big ? g.fs : SMALL * g.fs;   // small alif is drawn on the letter's baseline
+        arText(s, ALIF, Object.assign({ objectName: `M${i + 1} alif` }, o,
+          { x: cx[i] - (big ? 0.0078 : 0.0068) * g.fs, fontSize: af, y: o.y + (big ? 0 : 0.33 * (g.fs - af) / 72) }));
       } else {
         arText(s, l, Object.assign({ objectName: `L${i + 1} letter` }, o));
         arText(s, l + FATHA, Object.assign({ objectName: `F${i + 1} fathah` }, o));
-        if (last && MODE === "dagger") arText(s, l + FATHA + DAGGER, Object.assign({ objectName: `M${i + 1} dagger` }, o));
       }
     });
     if (n > 1) arText(s, result, { x: panelX, y: CY - g.ph / 2, w: g.pw, h: g.ph, fontSize: g.rs, objectName: "R result" });
