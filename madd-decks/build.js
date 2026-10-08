@@ -32,16 +32,14 @@ function deco(s) {
   d(T.triangle, 9.05, 5.1, 0.35, 0.3, "FFB347", "Deco rocket flame", { rotate: 180 });
 }
 
+
+// each slide = list of units {l: letter, b: true if this letter carries the alif}
 function drawSlides(SLIDES) {
-  SLIDES.forEach((letters) => {
+  SLIDES.forEach((units) => {
     const s = pres.addSlide();
     s.background = { color: BG };
     deco(s);
-    const n = letters.length, X = letters[n - 1];
-    const prefix = letters.slice(0, n - 1).map(l => l + FATHA).join("");
-    const result = MODE === "alif"
-      ? prefix + X + FATHA + ALIF
-      : [{ text: prefix + X + FATHA, options: {} }, { text: ALIF, options: { fontSize: SMALL * (n === 2 ? 90 : 66) } }];
+    const n = units.length;
     const CY = 2.8;
     let g, cx = [];
     if (n === 1) g = { d: 3.4, fs: 130, rs: 0 };
@@ -53,7 +51,7 @@ function drawSlides(SLIDES) {
       for (let i = 0; i < n; i++) { cx.push(right - g.d); right = right - g.d - g.gap; }
     }
     const ringCol = i => n === 1 ? RING[1] : (n === 2 ? [RING[0], RING[2]][i] : RING[i]);
-    letters.forEach((l, i) => s.addShape(T.ellipse, { x: cx[i], y: CY - g.d / 2, w: g.d, h: g.d,
+    units.forEach((u, i) => s.addShape(T.ellipse, { x: cx[i], y: CY - g.d / 2, w: g.d, h: g.d,
       fill: { color: "FFFFFF" }, line: { color: ringCol(i), width: n === 1 ? 10 : 8 }, objectName: `Circle ${i + 1}` }));
     let panelX = 0;
     if (n > 1) {
@@ -69,10 +67,10 @@ function drawSlides(SLIDES) {
       s.addShape(T.leftArrow, { x: leftSrc - g.zone / 2 - g.aw / 2, y: CY - 0.28, w: g.aw, h: 0.56,
         fill: { color: "FFD23F" }, line: { color: "FFD23F", width: 0 }, objectName: "A arrow" });
     }
-    letters.forEach((l, i) => {
-      const last = i === n - 1;
+    units.forEach((u, i) => {
+      const l = u.l;
       const o = { x: cx[i], y: CY - g.d / 2, w: g.d, h: g.d, fontSize: g.fs };
-      if (last) {                                 // letter sits right, alif is its own object on the left
+      if (u.b) {                                  // letter sits right, alif is its own object on the left
         const big = MODE === "alif";
         const o1 = Object.assign({}, o, { x: cx[i] + (big ? 0.0046 : 0.0042) * g.fs });
         arText(s, l, Object.assign({ objectName: `L${i + 1} letter` }, o1));
@@ -85,12 +83,59 @@ function drawSlides(SLIDES) {
         arText(s, l + FATHA, Object.assign({ objectName: `F${i + 1} fathah` }, o));
       }
     });
-    if (n > 1) arText(s, result, { x: panelX, y: CY - g.ph / 2, w: g.pw, h: g.ph, fontSize: g.rs, objectName: "R result" });
+    if (n > 1) {                                   // one joined text object; small alif is a smaller run inside it
+      const runs = []; let acc = "";
+      units.forEach(u => {
+        acc += u.l + FATHA;
+        if (u.b) {
+          if (MODE === "alif") acc += ALIF;
+          else { runs.push({ text: acc, options: {} }); runs.push({ text: ALIF, options: { fontSize: SMALL * g.rs } }); acc = ""; }
+        }
+      });
+      if (acc) runs.push({ text: acc, options: {} });
+      arText(s, MODE === "alif" ? runs.map(r => r.text).join("") : runs,
+        { x: panelX, y: CY - g.ph / 2, w: g.pw, h: g.ph, fontSize: g.rs, objectName: "R result" });
+    }
   });
 }
 
-const POOL = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش"];
-const MID = [["ب","ت"],["ت","ب"],["ث","ب"],["ج","ب"],["ح","ب"],["خ","ب"],["ب","أ"]];
+// real fatha-only words; the letter right before "ا" carries the alif
+const LEX = {
+ "ب": { two: ["أبا","ربا","حبا","نبا","خبا","صبا"], three: ["كتبا","ذهبا","ضربا","طلبا","بارك","بادر","باشر"] },
+ "ت": { two: ["أتا","عتا","شتا"], three: ["أتاك","سكتا","نبتا","ثبتا","تابع","تاجر"] },
+ "ث": { two: ["حثا","عثا","رثا","ثار","ثاب"], three: ["بحثا","حدثا","نكثا","مكثا","ثابر"] },
+ "ج": { two: ["نجا","رجا","هجا","جار","جاع","جاب"], three: ["خرجا","ولجا","جاهد","جالس","جادل","جاور"] },
+ "ح": { two: ["صحا","محا","نحا","حال","حار","حاك"], three: ["فتحا","نجحا","ذبحا","حاول","حارب","حاسب"] },
+ "خ": { two: ["أخا","سخا","خان","خاف","خاب","خاض"], three: ["نسخا","صرخا","طبخا","خالف","خاطب","خادع"] },
+ "د": { two: ["بدا","غدا","عدا","يدا","دار","دام","دان"], three: ["سجدا","عبدا","وعدا","قصدا","دافع","داوم"] },
+ "ذ": { two: ["هذا","كذا","ذاق","ذاب","ذاع"], three: ["أخذا","نبذا","ذاكر"] },
+ "ر": { two: ["ذرا","سرا","راح","راق","رام"], three: ["نصرا","كسرا","ذكرا","راقب","راجع","رافق"] },
+ "ز": { two: ["غزا","نزا","عزا","زار","زال","زاد"], three: ["عجزا","برزا","ركزا","زاحم","زارع","زاول"] },
+ "س": { two: ["كسا","حسا","رسا","سار","ساق","ساد"], three: ["جلسا","لمسا","غرسا","سافر","ساعد","سابق"] },
+ "ش": { two: ["شار","شاب","شاع","شاخ","شاق"], three: ["نقشا","فتشا","خدشا","شاهد","شارك","شاور"] },
+ "ص": { two: ["عصا","صار","صاح","صام","صاب","صاد"], three: ["رقصا","نقصا","فحصا","صافح","صاحب","صادق"] },
+ "ض": { two: ["نضا","ضار","ضاق","ضاع"], three: ["نهضا","قبضا","فرضا","ضارب","ضاعف","ضايق"] },
+ "ط": { two: ["خطا","سطا","طار","طاف","طال","طاب"], three: ["سقطا","هبطا","ربطا","طالب","طابق","طاوع"] },
+ "ظ": { two: [], three: ["وعظا","لحظا","غلظا","ظاهر"] },
+ "ع": { two: ["دعا","عاد","عاش","عاب"], three: ["رجعا","قطعا","سمعا","عاهد","عالج","عامل"] },
+ "غ": { two: ["لغا","غار","غاب","غاص"], three: ["بلغا","فرغا","صبغا","غالب","غادر","غامر"] },
+ "ف": { two: ["عفا","صفا","فاز","فاض","فات"], three: ["كشفا","عرفا","وقفا","فاوض","فارق","فاتح"] },
+ "ق": { two: ["رقا","قال","قام","قاد"], three: ["سرقا","خلقا","سبقا","قاتل","قابل","قاطع"] },
+ "ك": { two: ["شكا","كان","كاد","كال"], three: ["تركا","ملكا","سلكا","كاتب","كاشف","كابر"] },
+ "ل": { two: ["ألا","هلا","فلا","ولا","علا","خلا"], three: ["دخلا","نزلا","قتلا","أكلا","لاحظ","لاعب"] },
+ "م": { two: ["سما","نما","مات","مال","ماج"], three: ["فهما","حكما","رسما","مارس","مازح","ماثل"] },
+ "ن": { two: ["أنا","لنا","دنا","نام","نال","ناح"], three: ["سكنا","دفنا","خزنا","ناقش","ناول","نازع"] },
+ "ه": { two: ["لها","سها","هار","هال","هاب","هام"], three: ["كرها","وجها","سفها","هاجر","هاجم","هاتف"] },
+ "و": { two: [], three: ["دعوا","غزوا","وافق","واجه","واصل"] },
+ "ي": { two: ["هيا"], three: ["رميا","بنيا","سقيا","بكيا","سعيا"] },
+};
+function parse(word, X, count) {
+  const units = [];
+  for (const ch of word) { if (ch === "ا") units[units.length - 1].b = true; else units.push({ l: ch, b: false }); }
+  const bearing = units.filter(u => u.b);
+  if (units.length !== count || bearing.length !== 1 || bearing[0].l !== X) throw new Error("bad word " + word + " for " + X);
+  return units;
+}
 const FAMILIES = [
   ["01-ba-ta-tha", ["ب","ت","ث"]], ["02-noon-ya", ["ن","ي"]], ["03-jeem-ha-kha", ["ج","ح","خ"]],
   ["04-dal-dhal", ["د","ذ"]], ["05-ra-zay", ["ر","ز"]], ["06-seen-sheen", ["س","ش"]],
@@ -98,21 +143,14 @@ const FAMILIES = [
   ["10-fa-qaf", ["ف","ق"]], ["11-kaf", ["ك"]], ["12-lam", ["ل"]], ["13-meem", ["م"]],
   ["14-ha", ["ه"]], ["15-waw", ["و"]],
 ];
-const pairs = X => POOL.filter(l => l !== X).slice(0, 7).map(l => [l, X]);
-const triples = X => MID.map(([a, b]) => {
-  const alt = X === "س" ? "ش" : "س";
-  if (b === X) b = alt;
-  if (a === X) a = alt;
-  return [a, b, X];
-});
 (async () => {
   for (const [file, members] of FAMILIES) {
     pres = new pptxgen();
     pres.layout = "LAYOUT_16x9";
-    pres.title = "Arabic madd " + MODE + " " + file;
+    pres.title = "Arabic words with alif " + MODE + " " + file;
     const slides = [];
-    members.forEach(X => { slides.push([X]); pairs(X).forEach(p => slides.push(p)); });
-    members.forEach(X => triples(X).forEach(t => slides.push(t)));
+    members.forEach(X => { slides.push([{ l: X, b: true }]); LEX[X].two.forEach(w => slides.push(parse(w, X, 2))); });
+    members.forEach(X => LEX[X].three.forEach(w => slides.push(parse(w, X, 3))));
     drawSlides(slides);
     await pres.writeFile({ fileName: file + ".raw.pptx" });
   }
