@@ -36,6 +36,8 @@ SND = {"pluck1": wav(pluck(C5)), "pluck2": wav(pluck(E5)), "pluck3": wav(pluck(G
        "bloop": wav(bloop()), "whoosh": wav(whoosh()),
        "win": wav(mix((0, pluck(C5)), (0.12, pluck(E5)), (0.24, pluck(G5)), (0.36, pluck(C6, 0.8)), (0.38, bell(C6, 1.2)), (0.5, bell(G6, 1.2))))}
 def kind(name):
+    name = re.sub(r"^S\d+ ", "", name)
+    if name.startswith("B "): return "bloop"
     if name.startswith("R "): return "win"
     if "plus" in name: return "bloop"
     if "arrow" in name: return "whoosh"

@@ -1,6 +1,6 @@
 import zipfile, re, sys
 src, dst = sys.argv[1:3]
-def fade(ids, spid, click=True):
+def fade(ids, spid):
     a, b, c, d, e = ids
     return (f'<p:par><p:cTn id="{a}" fill="hold"><p:stCondLst><p:cond delay="indefinite"/></p:stCondLst><p:childTnLst>'
       f'<p:par><p:cTn id="{b}" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>'
@@ -11,12 +11,11 @@ def fade(ids, spid, click=True):
       f'<p:to><p:strVal val="visible"/></p:to></p:set>'
       f'<p:animEffect transition="in" filter="fade"><p:cBhvr><p:cTn id="{e}" dur="300"/><p:tgtEl><p:spTgt spid="{spid}"/></p:tgtEl></p:cBhvr></p:animEffect>'
       f'</p:childTnLst></p:cTn></p:par></p:childTnLst></p:cTn></p:par></p:childTnLst></p:cTn></p:par>')
-def timing(order, ids_by_name):
+def timing(steps):                       # steps = [(spid, name)] in click order
     nid = 3; pars = []; bld = []
-    for name in order:
-        spid = ids_by_name[name]
+    for spid, name in steps:
         pars.append(fade(range(nid, nid + 5), spid)); nid += 5
-        extra = ' animBg="1"' if (name.endswith("plus") or name.endswith("arrow")) else ''
+        extra = ' animBg="1"' if re.search(r'plus|arrow|badge', name) else ''
         bld.append(f'<p:bldP spid="{spid}" grpId="0"{extra}/>')
     return ('<p:timing><p:tnLst><p:par><p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot"><p:childTnLst>'
       '<p:seq concurrent="1" nextAc="seek"><p:cTn id="2" dur="indefinite" nodeType="mainSeq"><p:childTnLst>' + "".join(pars) +
@@ -28,13 +27,9 @@ for it in zin.infolist():
     d = zin.read(it.filename)
     if re.match(r"ppt/slides/slide\d+\.xml$", it.filename):
         t = d.decode("utf8")
-        ids = {m.group(2): m.group(1) for m in re.finditer(r'<p:cNvPr id="(\d+)" name="([^"]*)"', t)}
-        k = sum(1 for nme in ids if re.match(r"L\d letter", nme))
-        order = ["L1 letter","F1 tanween"] if k == 1 else (
-            ["L1 letter","F1 tanween","P1 plus","L2 letter","F2 tanween","A arrow","R result"] if k == 2 else
-            ["L1 letter","F1 tanween","P1 plus","L2 letter","F2 tanween","P2 plus","L3 letter","F3 tanween","A arrow","R result"])
-        if k == 1: assert "R result" not in ids
-        t = t.replace("</p:sld>", timing(order, ids) + "</p:sld>")
+        steps = sorted((int(m.group(3)), m.group(1), m.group(2)) for m in re.finditer(r'<p:cNvPr id="(\d+)" name="(S(\d+) [^"]*)"', t))
+        steps = [(sp, nm) for _, sp, nm in steps]
+        if steps: t = t.replace("</p:sld>", timing(steps) + "</p:sld>")
         d = t.encode("utf8")
     zout.writestr(it, d)
 zout.close()
