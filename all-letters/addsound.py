@@ -34,9 +34,13 @@ C5, E5, G5, C6, E6, G6 = 523.25, 659.25, 783.99, 1046.5, 1318.5, 1568.0
 SND = {"pluck1": wav(pluck(C5)), "pluck2": wav(pluck(E5)), "pluck3": wav(pluck(G5)),
        "bell1": wav(bell(C6)), "bell2": wav(bell(E6)), "bell3": wav(bell(G6)),
        "bloop": wav(bloop()), "whoosh": wav(whoosh()),
+       "oops": wav(mix((0, pluck(392, 0.5)), (0.22, pluck(294, 0.7)))),
+       "level": wav(mix((0, pluck(C5)), (0.12, pluck(E5)), (0.24, pluck(G5)), (0.36, pluck(C6, 0.8)), (0.55, pluck(G5)), (0.67, pluck(C6)), (0.79, pluck(E6, 0.9)), (0.81, bell(C6, 1.5)), (0.95, bell(G6, 1.5)))),
        "win": wav(mix((0, pluck(C5)), (0.12, pluck(E5)), (0.24, pluck(G5)), (0.36, pluck(C6, 0.8)), (0.38, bell(C6, 1.2)), (0.5, bell(G6, 1.2))))}
 def kind(name):
-    name = re.sub(r"^S\d+ ", "", name)
+    name = re.sub(r"^[SG]\d+ ", "", name)
+    for key, k in (("confetti", None), ("panel", None), ("medal ", None), ("medal", "level"), ("face", "win"), ("oops", "oops"), ("star1", "bell1"), ("star2", "bell2"), ("star3", "bell3")):
+        if name.startswith(key): return k
     if name.startswith("B "): return "bloop"
     if name.startswith("R "): return "win"
     if "plus" in name: return "bloop"
@@ -60,6 +64,7 @@ for it in zin.infolist():
         used = {}; nid = [1000]
         def rep(mo):
             spid = re.search(r'spid="(\d+)"', mo.group(1)).group(1); k = kind(names[spid])
+            if k is None: return mo.group(0)
             rid = used.setdefault(k, f"rIdSnd{len(used) + 1}"); nid[0] += 1
             return mo.group(1) + AUD.format(id=nid[0], rid=rid, nm=k) + mo.group(2)
         t = re.sub(r'(<p:animEffect.*?</p:animEffect>)(</p:childTnLst></p:cTn></p:par>)', rep, t)
