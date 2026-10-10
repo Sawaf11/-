@@ -102,11 +102,14 @@ const PRE = ["أ","ب","ت","ث","ج","ح","خ"];            // letters placed b
 const FOLLOW = ["أ","ب","ت","ث","ج","ح","خ"];         // letters placed after X
 const MID = [["ب","ت"],["ت","ب"],["ث","ب"],["ج","ب"],["ح","ب"],["خ","ب"],["ب","أ"]];
 const alt = (l, X) => l !== X ? l : (X === "س" ? "ش" : "س");
+const ALPHA = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش","ص","ض","ط","ظ","ع","غ","ف","ق","ك","ل","م","ن","ه","و","ي"];
+// partners = every letter that comes before X in Arabic order (أ ... letter before X); the first letters keep 7 partners
+const partners = X => { const i = ALPHA.indexOf(X); return i >= 7 ? ALPHA.slice(0, i) : ALPHA.filter(l => l !== X).slice(0, 7); };
 const slidesFor = X => {
-  const out = [[X]];
-  FOLLOW.forEach(f => out.push([X, alt(f, X)]));                       // beginning
-  MID.forEach(([a, b]) => out.push([alt(a, X), X, alt(b, X)]));        // middle
-  PRE.forEach(p => out.push([alt(p, X), X]));                          // end
+  const P = partners(X), out = [[X]];
+  P.forEach(p => out.push([X, p]));                                   // beginning: X + earlier letter
+  P.forEach((p, k) => out.push([p, X, P[(k + 1) % P.length]]));       // middle: earlier letter + X + next earlier letter
+  P.forEach(p => out.push([p, X]));                                   // end: earlier letter + X
   return out;
 };
 (async () => {
