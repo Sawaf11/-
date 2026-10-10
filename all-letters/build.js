@@ -104,14 +104,9 @@ const MID = [["ب","ت"],["ت","ب"],["ث","ب"],["ج","ب"],["ح","ب"],["خ","
 const alt = (l, X) => l !== X ? l : (X === "س" ? "ش" : "س");
 const slidesFor = X => {
   const out = [[X]];
-  if (!NOJOIN.includes(X)) {
-    FOLLOW.forEach(f => out.push([X, f]));                 // beginning
-    MID.forEach(([a, b]) => out.push([a, X, b]));          // middle
-    PRE.forEach(p => out.push([p, X]));                    // end
-  } else {
-    PRE.map(p => alt(p, X)).forEach(p => out.push([p, X]));
-    MID.forEach(([a, b]) => out.push([alt(a, X), alt(b, X), X]));
-  }
+  FOLLOW.forEach(f => out.push([X, alt(f, X)]));                       // beginning
+  MID.forEach(([a, b]) => out.push([alt(a, X), X, alt(b, X)]));        // middle
+  PRE.forEach(p => out.push([alt(p, X), X]));                          // end
   return out;
 };
 (async () => {
