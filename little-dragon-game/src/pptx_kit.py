@@ -55,6 +55,33 @@ class Scene:
         if rot: p.rotation = rot
         if link: self.links.append((p, link))
         return p.shape_id if not PREVIEW or True else None
+    def letter(self, text, cx, cy, d, color='16213E', ring=None, plain=False, fs=None, name=None, hidden=False, link=None):
+        """Native, editable Arabic text (Arial, RTL, ar-SA) in a white badge (or plain). Matches the earlier fathah decks."""
+        if PREVIEW and hidden: return None
+        from pptx.enum.shapes import MSO_SHAPE
+        from pptx.util import Pt
+        from pptx.dml.color import RGBColor
+        sp = self.slide.shapes.add_shape(MSO_SHAPE.OVAL, Emu(E(cx - d / 2)), Emu(E(cy - d / 2)), Emu(E(d)), Emu(E(d)))
+        sp.name = name or f'Arabic letter {text}'
+        st = sp._element.find(f'{{{NS_P}}}style')
+        if st is not None: sp._element.remove(st)
+        if plain: sp.fill.background(); sp.line.fill.background()
+        else:
+            sp.fill.solid(); sp.fill.fore_color.rgb = RGBColor(255, 255, 255)
+            sp.line.color.rgb = RGBColor.from_string(ring or '3A8FD9'); sp.line.width = Pt(max(2, d / 24))
+        tf = sp.text_frame; tf.word_wrap = False
+        tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+        from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER
+        p._p.get_or_add_pPr().set('rtl', '1')
+        r = p.add_run(); r.text = text
+        r.font.size = Pt(fs or d * 0.36); r.font.bold = True; r.font.name = 'Arial'; r.font.color.rgb = RGBColor.from_string(color)
+        rPr = r._r.get_or_add_rPr(); rPr.set('lang', 'ar-SA')
+        cs = etree.SubElement(rPr, f'{{{NS_A}}}cs'); cs.set('typeface', 'Arial')
+        sp._element.nvSpPr.cNvPr.set('descr', f'Arabic letter {text}')
+        if link: self.links.append((sp, link))
+        return sp.shape_id
     def hot(self, x, y, w, h, name='hotspot', link=None):
         from pptx.enum.shapes import MSO_SHAPE
         sp = self.slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(E(x)), Emu(E(y)), Emu(E(w)), Emu(E(h)))

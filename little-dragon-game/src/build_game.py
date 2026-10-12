@@ -2,6 +2,14 @@ import sys, os, random
 import pptx_kit as K
 from pptx_kit import fx, snd, lbox, pose_timeline, hop
 
+AR = False
+FATHA = '\u064E'
+RING = ['E8604C', '3A8FD9', '2FB57A']          # ring colours used in the earlier fathah decks
+def ar(ch): return ch + FATHA
+def badge(s, ch, cx, cy, d, i=0, **kw):
+    return s.letter(ar(ch), cx, cy, d, ring=RING[i % 3], **kw) if AR else None
+def with_none(effs): return [e for e in effs if e is not None and e.get('sp', 1) is not None or e.get('kind') == 'sound']
+
 def pulse(sp, sx=112, dur=900, t=0): return fx('scale', sp, t, sx=sx, sy=sx, dur=dur, rev=True, repeat='inf')
 def bob(sp, dy=-0.02, dur=1400, t=0): return fx('move', sp, t, dx=0, dy=dy, dur=dur, rev=True, repeat='inf')
 def sway(sp, dx=0.006, dy=-0.02, dur=2400, t=0): return fx('move', sp, t, dx=dx, dy=dy, dur=dur, rev=True, repeat='inf')
@@ -46,7 +54,13 @@ def build(deck):
             if not (m >> b) & 1:
                 sp = s.pic('star_gold', x, y, 170, 170, name=f'Hidden star {b + 1}', link=f'f{m | (1 << b)}', descr='sparkling star to collect')
                 auto += [pulse(sp, 118, 800 + 130 * b, 100 * b), fx('spin', sp, 0, deg=14, dur=1800 + 200 * b, rev=True, repeat='inf')]
+                if AR:
+                    bd = s.letter(ar('أبتثج'[b]), x + 85, y + 100, 84, ring=RING[b % 3], fs=34, name=f'Star letter {b + 1}', link=f'f{m | (1 << b)}')
+                    auto.append(pulse(bd, 118, 800 + 130 * b, 100 * b))
         s.pic(f'hud_{k}', 610, 24, 700, 130, name=f'Star counter {k} of 5', descr=f'{k} of 5 stars collected')
+        if AR:
+            got = [bt for bt in range(5) if (m >> bt) & 1]
+            for j, bt in enumerate(got): s.letter(ar('أبتثج'[bt]), 610 + 90 + j * 130, 24 + 70, 80, plain=True, fs=30, name=f'Collected letter {bt + 1}')
         lb = lbox(560, 1000, 470)
         if k == 5:
             tl = [('cheer', 0), ('flyUp', 1400), ('fly', 1700), ('flyUp', 2000), ('fly', 2300), ('flyUp', 2600), ('fly', 2900), ('flyUp', 3200), ('fly', 3500)]
@@ -85,6 +99,8 @@ def build(deck):
     for n, (col, x, y, rew) in enumerate(BAL):
         bal = s.pic(f'balloon_{col}', x, y, 180, 360, name=f'{col} balloon', descr=f'{col} balloon')
         cx, cy = x + 90, y + 130
+        bd = badge(s, 'حخدذرزس'[n], cx, y + 120, 96, n, name=f'Balloon letter {n + 1}')
+        bigl = badge(s, 'حخدذرزس'[n], cx, cy - 80, 250, n, name='big letter', hidden=True) if AR else None
         burst = s.pic(f'burst_{col}', cx - 150, cy - 150, 300, 300, name='pop burst', hidden=True)
         rw, rh = {'r_bird': (210, 178), 'r_butterfly': (230, 184), 'r_rainbow': (330, 188), 'r_star': (180, 180), 'r_heart': (170, 170), 'r_flower': (170, 212), 'r_ladybug': (150, 125)}[rew]
         img = 'star_gold' if rew == 'r_star' else ('heart_pink' if rew == 'r_heart' else rew)
@@ -101,12 +117,14 @@ def build(deck):
         if rew == 'r_flower': eff += [fx('scale', r, 450, sx=140, sy=140, dur=700, rev=True, repeat=2), fx('fadeout', r, 2200, dur=500)]
         if rew == 'r_ladybug': eff += [fx('move', r, 450, path=[(0.06, 0.04), (0.12, -0.02), (0.2, 0.05)], dur=2400), fx('fadeout', r, 2200, dur=500)]
         eff += hop(lids, 100, -0.06, 220, 2)
+        if AR: eff += [fx('disappear', bd, 0), fx('zoomin', bigl, 150, dur=350), fx('move', bigl, 500, dx=0, dy=-0.12, dur=1500), fx('fadeout', bigl, 1700, dur=500)]
         pops.append((hs, eff))
     for hs, eff in pops: s.on_click(hs, eff)
     s.on_load(auto)
 
     # ================= 4. FEED THE BABY DRAGON =================
-    FOODS = [('apple', 'munch'), ('cupcake', 'cake'), ('banana', 'munch'), ('melon', 'munch'), ('broccoli', 'veg'), ('chili', 'chili')]
+    FOODS = [('apple', 'munch'), ('cupcake', 'cake'), ('banana', 'munch'), ('melon', 'munch'), ('lemon' if AR else 'broccoli', 'veg'), ('chili', 'chili')]
+    FLET = dict(apple='ت', cupcake='ك', banana='م', melon='ب', lemon='ل', chili='ف')   # first letter of the Arabic word
     FX_ = lambda i: 150 + i * 290
     mouth = (960, 511)
     for variant in [None] + [f[0] for f in FOODS]:
@@ -118,9 +136,14 @@ def build(deck):
         for i, (nm, kind) in enumerate(FOODS):
             if nm == variant:
                 foods[nm] = s.pic(f'food_{nm}', FX_(i), 790, 230, 230, name=f'{nm} (flying to Lumi)', descr=nm)
+                fbd = badge(s, FLET[nm], FX_(i) + 190, 825, 84, i, name='food letter') if AR else None
             else:
                 foods[nm] = s.pic(f'food_{nm}', FX_(i), 790, 230, 230, name=f'Feed {nm}', link=f'feed_{nm}', hidden=(variant is None), descr=f'{nm} to feed Lumi')
                 auto.append(pulse(foods[nm], 108, 800 + 100 * i, 120 * i))
+                if AR:
+                    fb_ = badge(s, FLET[nm], FX_(i) + 190, 825, 84, i, name=f'food letter {nm}', link=f'feed_{nm}', hidden=(variant is None))
+                    auto.append(pulse(fb_, 108, 800 + 100 * i, 120 * i))
+                    if variant is None: auto.append(fx('zoomin', fb_, 700 + 180 * i, dur=350))
         if variant is None:
             tl = [('surprised', 0), ('wait', 900)]
             ids, pe = pose_timeline(s, fb, tl)
@@ -136,6 +159,11 @@ def build(deck):
             if kind == 'veg': tl = [('wait', 0), ('chewA', 450), ('chewB', 670), ('yuck', 1000), ('chewA', 1700), ('chewB', 1950), ('happyAgain', 2300)]; end = 2600; sound = 'feed_veg'
             if kind == 'chili': tl = [('wait', 0), ('chewA', 450), ('chewB', 670), ('hot', 900), ('fire', 1800), ('hot', 3100), ('yummy', 3300)]; end = 3600; sound = 'feed_chili'
             ids, pe = pose_timeline(s, fb, tl)
+            if AR:
+                auto += [fx('move', fbd, 0, dx=dx, dy=dy, dur=450), fx('scale', fbd, 0, sx=35, sy=35, dur=450), fx('disappear', fbd, 450)]
+                tl_big = {'munch': 1500, 'cake': 1100, 'veg': 2300, 'chili': 3300}[kind]
+                bl = badge(s, FLET[variant], 1400, 330, 300, i, name='big letter', hidden=True)
+                auto += [fx('zoomin', bl, tl_big, dur=400), fx('scale', bl, tl_big + 400, sx=108, sy=108, dur=500, rev=True, repeat=2), fx('fadeout', bl, tl_big + 1800, dur=500)]
             auto += pe + [snd(sound, 0), fx('move', foods[variant], 0, dx=dx, dy=dy, dur=450), fx('scale', foods[variant], 0, sx=35, sy=35, dur=450), fx('spin', foods[variant], 0, deg=360, dur=450), fx('disappear', foods[variant], 450)]
             if kind in ('munch', 'cake'):
                 sb = s.pic('sparkle_burst', 710, 180, 500, 500, name='yummy sparkles', hidden=True)
@@ -153,6 +181,9 @@ def build(deck):
                 auto += hop(ids, 900, -0.04, 150, 3)
             ht = s.pic('heart_big', 1560, 40, 280, 280, name='Magic heart: tap for a hug', hidden=True, link='hug', descr='glowing magic heart')
             auto += [fx('zoomin', ht, end, dur=500), pulse(ht, 115, 700, end + 500)]
+            if AR:
+                hb = badge(s, 'ح', 1700, 175, 100, 0, name='Heart letter', hidden=True, link='hug')
+                auto += [fx('zoomin', hb, end, dur=500), pulse(hb, 115, 700, end + 500)]
         s.on_load(auto)
 
     # ================= 5. THE MAGIC HUG =================
@@ -165,9 +196,11 @@ def build(deck):
     po = s.pic('lumi_hugOpen', *small, name='Lumi running with open arms', hidden=True)
     pb = s.pic('lumi_hug', *big, name='Lumi hugging (close-up)', hidden=True)
     heart = s.pic('heart_big', 1170, 470, 520, 520, name='Big glowing heart', descr='big glowing heart: tap it')
+    hbd = badge(s, 'ح', 1430, 750, 190, 0, name='Heart letter')
+    hhot = s.hot(1230, 540, 400, 400, 'Tap the heart')
     key = s.pic('key', 1330, 120, 320, 200, name='Heart key to the secret door', hidden=True, link='d0_n', descr='golden heart key')
-    s.on_load([pulse(heart, 108, 800), fx('scale', pi, 0, sx=102, sy=103, dur=1500, rev=True, repeat='inf'), snd('lumi_tap', 300)] + fireflies(s, 6, rng, (60, 100, 1800, 600)))
-    eff = [snd('hug_sequence', 0), fx('scale', heart, 0, sx=130, sy=130, dur=300, rev=True), fx('disappear', pi, 0), fx('appear', ps, 0), fx('move', ps, 0, dx=0, dy=-0.05, dur=250, rev=True),
+    s.on_load([pulse(heart, 108, 800)] + ([pulse(hbd, 108, 800)] if AR else []) + [fx('scale', pi, 0, sx=102, sy=103, dur=1500, rev=True, repeat='inf'), snd('lumi_tap', 300)] + fireflies(s, 6, rng, (60, 100, 1800, 600)))
+    eff = [snd('hug_sequence', 0), fx('scale', heart, 0, sx=130, sy=130, dur=300, rev=True)] + ([fx('scale', hbd, 0, sx=130, sy=130, dur=300, rev=True)] if AR else []) + [ fx('disappear', pi, 0), fx('appear', ps, 0), fx('move', ps, 0, dx=0, dy=-0.05, dur=250, rev=True),
            fx('disappear', ps, 700), fx('appear', po, 700),
            fx('move', po, 700, dx=(960 - 560) / 1920, dy=((big[1] + 450) - (small[1] + 180)) / 1080, dur=1300), fx('scale', po, 700, sx=250, sy=250, dur=1300),
            fx('disappear', po, 2000), fx('appear', pb, 2000), fx('fadein', glow, 2000, dur=700), pulse(glow, 106, 1200, 2700),
@@ -178,7 +211,7 @@ def build(deck):
         t0 = 2200 + n * 230
         eff += [fx('zoomin', h, t0, dur=250), fx('move', h, t0, dx=((-1) ** n) * (0.04 + 0.02 * n % 5) / 1, dy=-0.5, dur=2300), fx('fadeout', h, t0 + 1800, dur=500)]
     eff += [fx('zoomin', key, 3900, dur=500), snd('key_appear', 3900), bob(key, -0.025, 1200, 4400), spin_loop(key, 100000, 4400) if False else pulse(key, 108, 900, 4400)]
-    s.on_click(heart, eff, restart='never')
+    s.on_click(hhot, eff, restart='never')
 
     # ================= 6. THE SECRET DOOR (13 states) =================
     DOOR = (700, 160, 520, 760); SOCK = [(830, 460), (960, 460), (1090, 460)]
@@ -224,6 +257,9 @@ def build(deck):
         else:
             fl = s.pic('pot_bud', 1260, 640, 260, 364, name='Magic flower (bud)', link=link(2), descr='flower bud: tap it')
             auto.append(pulse(fl, 105, 1000))
+        if AR:
+            for b, (ch, bx, by) in enumerate([('ف', 480, 330), ('ب', 1710, 440), ('ز', 1390, 610)]):
+                s.letter(ar(ch), bx, by, 100, ring=RING[b], name=f'Clue letter {ch}', link=link(b))
         # door (inner + leaf)
         if complete: s.pic('door_inner', *DOOR, name='Treasure room behind the door', descr='golden light behind the door')
         leaf = s.pic('door_closed', *DOOR, name='Magic door', descr='locked magic door')
@@ -290,6 +326,13 @@ def build(deck):
         c = s.pic('confetti', 360, -720, 1200, 700, name='confetti', descr='falling confetti')
         auto.append(fx('move', c, t, dx=0, dy=1.7, dur=3800))
     auto += [snd('bye', 7200)]
+    if AR:
+        ALPHA = 'أبتثجحخدذرزسشصضطظعغفقكلمنهوي'
+        for n, ch in enumerate(ALPHA):
+            col = ['FFC93C', '7DF9FF', 'FF9EC4', 'B8F2A1'][n % 4]
+            x = 60 + (n * 67) % 1800
+            lt = s.letter(ar(ch), x, -140, 150, color=col, plain=True, fs=64, name=f'Falling letter {ch}')
+            auto.append(fx('move', lt, 1800 + n * 170, dx=((-1) ** n) * 0.02, dy=1.4, dur=3400))
     rp = s.pic('portal', 1480, 690, 340, 340, name='Play again', hidden=True, link='wake', descr='glowing portal: play again')
     auto += [fx('zoomin', rp, 9300, dur=600), spin_loop(rp, 8000, 9900), snd('portal_in', 9300)]
     s.on_load(auto)
