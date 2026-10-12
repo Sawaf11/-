@@ -1,0 +1,214 @@
+"""Tiny game-layer on top of python-pptx: pictures, hotspots, slide links, and
+hand-written OOXML animation timelines (auto-start, click-triggered, sounds, looping music)."""
+import os, copy
+from pptx import Presentation
+from pptx.util import Emu
+from pptx.opc.package import Part
+from pptx.opc.packuri import PackURI
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+from lxml import etree
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+IMG = os.path.join(HERE, '..', 'assets', 'img')
+AUD = os.path.join(HERE, '..', 'assets', 'audio')
+PX = 6350                      # EMU per design pixel (1920x1080 design canvas)
+E = lambda v: int(round(v * PX))
+NS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main'
+NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+PREVIEW = False                # static (initial-state) build for LibreOffice previews
+
+class Deck:
+    def __init__(self):
+        self.prs = Presentation()
+        self.prs.slide_width, self.prs.slide_height = 12192000, 6858000
+        cp = self.prs.core_properties; cp.title = "The Little Dragon's Magic World"; cp.author = 'Claude'; cp.subject = 'Interactive cartoon adventure game for ages 4-8'
+        self.layout = self.prs.slide_layouts[6]
+        self.slides = {}
+        self.snd_parts = {}
+    def new(self, key, **kw):
+        s = Scene(self, key, **kw); self.slides[key] = s; return s
+    def sound_part(self, name):
+        if name not in self.snd_parts:
+            blob = open(os.path.join(AUD, name + '.wav'), 'rb').read()
+            self.snd_parts[name] = Part(PackURI(f'/ppt/media/snd_{name}.wav'), 'audio/wav', self.prs.part.package, blob)
+        return self.snd_parts[name]
+    def save(self, path):
+        for s in self.slides.values(): s.finish()
+        self.prs.save(path)
+
+class Scene:
+    def __init__(self, deck, key, fade=False):
+        self.d, self.key, self.fade = deck, key, fade
+        self.slide = deck.prs.slides.add_slide(deck.layout)
+        self.auto, self.trig, self.links = [], [], []
+        self.anchor = None
+        self.snd_rids = {}
+        self.music = None
+    # ---- shapes ----
+    def pic(self, img, x, y, w, h, name=None, hidden=False, link=None, descr='', rot=0):
+        if PREVIEW and hidden: return None
+        ext = 'jpeg' if os.path.exists(os.path.join(IMG, img + '.jpeg')) else 'png'
+        p = self.slide.shapes.add_picture(os.path.join(IMG, f'{img}.{ext}'), Emu(E(x)), Emu(E(y)), Emu(E(w)), Emu(E(h)))
+        p.name = name or img
+        p._element.nvPicPr.cNvPr.set('descr', descr or (name or img).replace('_', ' '))
+        if rot: p.rotation = rot
+        if link: self.links.append((p, link))
+        return p.shape_id if not PREVIEW or True else None
+    def hot(self, x, y, w, h, name='hotspot', link=None):
+        from pptx.enum.shapes import MSO_SHAPE
+        sp = self.slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(E(x)), Emu(E(y)), Emu(E(w)), Emu(E(h)))
+        sp.name = name
+        spPr = sp._element.spPr
+        for ch in list(spPr):
+            if ch.tag.endswith('}solidFill') or ch.tag.endswith('}ln') or ch.tag.endswith('}noFill'): spPr.remove(ch)
+        fill = etree.SubElement(spPr, f'{{{NS_A}}}solidFill'); clr = etree.SubElement(fill, f'{{{NS_A}}}srgbClr', val='FFFFFF')
+        etree.SubElement(clr, f'{{{NS_A}}}alpha', val='1000')      # 1% opaque: invisible but click-able
+        ln = etree.SubElement(spPr, f'{{{NS_A}}}ln'); etree.SubElement(ln, f'{{{NS_A}}}noFill')
+        st = sp._element.find(f'{{{NS_P}}}style')
+        if st is not None: sp._element.remove(st)
+        if link: self.links.append((sp, link))
+        return sp.shape_id
+    # ---- timeline ----
+    def sound_rid(self, name):
+        if name not in self.snd_rids:
+            self.snd_rids[name] = self.slide.part.relate_to(self.d.sound_part(name), RT.AUDIO)
+        return self.snd_rids[name]
+    def need_anchor(self):
+        if self.anchor is None:
+            p = self.slide.shapes.add_picture(os.path.join(IMG, 'blank.png'), Emu(E(2)), Emu(E(2)), Emu(E(4)), Emu(E(4)))
+            p.name = 'sound anchor'; p._element.nvPicPr.cNvPr.set('descr', 'sound anchor (invisible)')
+            self.anchor = p.shape_id
+        return self.anchor
+    def on_load(self, effects): self.auto += effects
+    def on_click(self, spid, effects, restart='whenNotActive'): self.trig.append((spid, effects, restart))
+    def add_music(self, name):
+        self.music = name
+    def finish(self):
+        for shp, tgt in self.links:
+            shp.click_action.target_slide = self.d.slides[tgt].slide if isinstance(tgt, str) else tgt
+        if PREVIEW: return
+        sld = self.slide._element
+        tr = etree.SubElement(sld, f'{{{NS_P}}}transition'); tr.set('advClick', '0')
+        if self.fade:
+            tr.set('spd', 'med'); etree.SubElement(tr, f'{{{NS_P}}}fade')
+        if self.music: self._music_shape()
+        xml = timing_xml(self)
+        if xml is not None: sld.append(etree.fromstring(xml))
+    def _music_shape(self):
+        pt = self.d.sound_part(self.music)
+        rid_a = self.slide.part.relate_to(pt, RT.AUDIO)
+        rid_m = self.slide.part.relate_to(pt, 'http://schemas.microsoft.com/office/2007/relationships/media')
+        pic = self.slide.shapes.add_picture(os.path.join(IMG, 'blank.png'), Emu(E(8)), Emu(E(8)), Emu(E(40)), Emu(E(40)))
+        pic.name = 'Background music (Lumi lullaby)'
+        nv = pic._element.nvPicPr
+        nv.cNvPr.set('descr', 'background music')
+        h = etree.SubElement(nv.cNvPr, f'{{{NS_A}}}hlinkClick'); h.set(f'{{{NS_R}}}id', ''); h.set('action', 'ppaction://media')
+        nvPr = nv.find(f'{{{NS_P}}}nvPr')
+        af = etree.SubElement(nvPr, f'{{{NS_A}}}audioFile'); af.set(f'{{{NS_R}}}link', rid_a)
+        ext_lst = etree.SubElement(nvPr, f'{{{NS_P}}}extLst'); ext = etree.SubElement(ext_lst, f'{{{NS_P}}}ext'); ext.set('uri', '{DAA4B4D4-6D71-4841-9C94-3DE7FCFB9230}')
+        m = etree.SubElement(ext, '{http://schemas.microsoft.com/office/powerpoint/2010/main}media', nsmap={'p14': 'http://schemas.microsoft.com/office/powerpoint/2010/main'})
+        m.set(f'{{{NS_R}}}embed', rid_m)
+        self.music_id = pic.shape_id
+
+# ----------------- effects -----------------
+def fx(kind, sp, t=0, **kw): return dict(kind=kind, sp=sp, t=int(t), **kw)
+def snd(name, t=0, vol=100): return dict(kind='sound', sp=None, t=int(t), name=name, vol=vol)
+
+class Ids:
+    def __init__(self, n=3): self.n = n
+    def __call__(self): self.n += 1; return self.n
+
+def _tgt(spid): return f'<p:tgtEl><p:spTgt spid="{spid}"/></p:tgtEl>'
+def _set_vis(i, spid, val, delay=0):
+    return f'<p:set><p:cBhvr><p:cTn id="{i()}" dur="1" fill="hold"><p:stCondLst><p:cond delay="{delay}"/></p:stCondLst></p:cTn>{_tgt(spid)}<p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="{val}"/></p:to></p:set>'
+def _rep(e):
+    s = ''
+    if e.get('repeat'): s += f' repeatCount="{ "indefinite" if e["repeat"] == "inf" else int(e["repeat"] * 1000)}"'
+    if e.get('rev'): s += ' autoRev="1"'
+    return s
+
+def effect_xml(e, i, scene, node):
+    k, t, sp = e['kind'], e['t'], e['sp']
+    pre = {'appear': (1, 'entr'), 'disappear': (1, 'exit'), 'fadein': (10, 'entr'), 'fadeout': (10, 'exit'), 'zoomin': (53, 'entr'),
+           'move': (0, 'path'), 'scale': (6, 'emph'), 'spin': (8, 'emph'), 'sound': (1, 'entr')}[k]
+    body = ''
+    d = int(e.get('dur', 500))
+    if k == 'sound':
+        sp = scene.need_anchor(); rid = scene.sound_rid(e['name'])
+        body += _set_vis(i, sp, 'visible')
+        body += (f'<p:audio><p:cMediaNode vol="{int(e.get("vol", 100)) * 1000}"><p:cTn id="{i()}" display="0"><p:stCondLst><p:cond delay="0"/></p:stCondLst>'
+                 f'<p:endCondLst><p:cond evt="onStopAudio" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:endCondLst></p:cTn>'
+                 f'<p:tgtEl><p:sndTgt r:embed="{rid}" name="{e["name"]}.wav"/></p:tgtEl></p:cMediaNode></p:audio>')
+    elif k == 'appear': body += _set_vis(i, sp, 'visible')
+    elif k == 'disappear': body += _set_vis(i, sp, 'hidden')
+    elif k == 'fadein':
+        body += _set_vis(i, sp, 'visible') + f'<p:animEffect transition="in" filter="fade"><p:cBhvr><p:cTn id="{i()}" dur="{d}"/>{_tgt(sp)}</p:cBhvr></p:animEffect>'
+    elif k == 'fadeout':
+        body += f'<p:animEffect transition="out" filter="fade"><p:cBhvr><p:cTn id="{i()}" dur="{d}"/>{_tgt(sp)}</p:cBhvr></p:animEffect>' + _set_vis(i, sp, 'hidden', max(1, d - 1))
+    elif k == 'zoomin':
+        body += _set_vis(i, sp, 'visible')
+        for attr in ('ppt_w', 'ppt_h'):
+            body += (f'<p:anim calcmode="lin" valueType="num"><p:cBhvr><p:cTn id="{i()}" dur="{d}" fill="hold"/>{_tgt(sp)}<p:attrNameLst><p:attrName>{attr}</p:attrName></p:attrNameLst></p:cBhvr>'
+                     f'<p:tavLst><p:tav tm="0"><p:val><p:fltVal val="0"/></p:val></p:tav><p:tav tm="100000"><p:val><p:strVal val="#{attr}"/></p:val></p:tav></p:tavLst></p:anim>')
+        body += f'<p:animEffect transition="in" filter="fade"><p:cBhvr><p:cTn id="{i()}" dur="{d}"/>{_tgt(sp)}</p:cBhvr></p:animEffect>'
+    elif k == 'move':
+        pts = e.get('path') or [(e['dx'], e['dy'])]
+        path = 'M 0 0 ' + ' '.join(f'L {x:.4f} {y:.4f}' for x, y in pts) + ' E'
+        body += (f'<p:animMotion origin="layout" path="{path}" pathEditMode="relative" ptsTypes="{"A" * (len(pts) + 1)}"><p:cBhvr><p:cTn id="{i()}" dur="{d}" fill="hold"{_rep(e)}/>{_tgt(sp)}'
+                 f'<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>')
+    elif k == 'scale':
+        body += f'<p:animScale><p:cBhvr><p:cTn id="{i()}" dur="{d}" fill="hold"{_rep(e)}/>{_tgt(sp)}</p:cBhvr><p:by x="{int(e["sx"] * 1000)}" y="{int(e["sy"] * 1000)}"/></p:animScale>'
+    elif k == 'spin':
+        body += f'<p:animRot by="{int(e["deg"] * 60000)}"><p:cBhvr><p:cTn id="{i()}" dur="{d}" fill="hold"{_rep(e)}/>{_tgt(sp)}<p:attrNameLst><p:attrName>r</p:attrName></p:attrNameLst></p:cBhvr></p:animRot>'
+    return (f'<p:par><p:cTn id="{i()}" presetID="{pre[0]}" presetClass="{pre[1]}" presetSubtype="0" fill="hold" nodeType="{node}">'
+            f'<p:stCondLst><p:cond delay="{t}"/></p:stCondLst><p:childTnLst>{body}</p:childTnLst></p:cTn></p:par>')
+
+def timing_xml(sc):
+    if not sc.auto and not sc.trig and not sc.music: return None
+    i = Ids(3)
+    effects = list(sc.auto)
+    # music: media call on load
+    music_par = ''
+    if sc.music:
+        mid = sc.music_id
+        music_par = (f'<p:par><p:cTn id="{i()}" presetID="1" presetClass="mediacall" presetSubtype="0" fill="hold" nodeType="withEffect"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>'
+                     f'<p:cmd type="call" cmd="playFrom(0.0)"><p:cBhvr><p:cTn id="{i()}" dur="1" fill="hold"/><p:tgtEl><p:spTgt spid="{mid}"/></p:tgtEl></p:cBhvr></p:cmd></p:childTnLst></p:cTn></p:par>')
+    auto_inner = ''.join(effect_xml(e, i, sc, 'withEffect') for e in effects) + music_par
+    main_kids = ''
+    if auto_inner:
+        main_kids = (f'<p:par><p:cTn id="{i()}" fill="hold"><p:stCondLst><p:cond delay="indefinite"/><p:cond evt="onBegin" delay="0"><p:tn val="2"/></p:cond></p:stCondLst><p:childTnLst>'
+                     f'<p:par><p:cTn id="{i()}" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>{auto_inner}</p:childTnLst></p:cTn></p:par></p:childTnLst></p:cTn></p:par>')
+    trig_xml = ''
+    for spid, effs, restart in sc.trig:
+        inner = ''.join(effect_xml(e, i, sc, 'clickEffect' if n == 0 else 'withEffect') for n, e in enumerate(sorted(effs, key=lambda z: z['t'])))
+        trig_xml += (f'<p:seq concurrent="1" nextAc="seek"><p:cTn id="{i()}" restart="{restart}" fill="hold" evtFilter="cancelBubble" nodeType="interactiveSeq">'
+                     f'<p:stCondLst><p:cond evt="onClick" delay="0"><p:tgtEl><p:spTgt spid="{spid}"/></p:tgtEl></p:cond></p:stCondLst><p:endSync evt="end" delay="0"><p:rtn val="all"/></p:endSync><p:childTnLst>'
+                     f'<p:par><p:cTn id="{i()}" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst><p:par><p:cTn id="{i()}" fill="hold"><p:stCondLst><p:cond delay="0"/></p:stCondLst><p:childTnLst>{inner}</p:childTnLst></p:cTn></p:par></p:childTnLst></p:cTn></p:par>'
+                     f'</p:childTnLst></p:cTn></p:seq>')
+    music_node = ''
+    if sc.music:
+        music_node = (f'<p:audio><p:cMediaNode vol="55000" numSld="999" showWhenStopped="0"><p:cTn id="{i()}" repeatCount="indefinite" fill="hold" display="0"><p:stCondLst><p:cond delay="indefinite"/><p:cond evt="onBegin" delay="0"><p:tn val="2"/></p:cond></p:stCondLst>'
+                      f'<p:endCondLst><p:cond evt="onStopAudio" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:endCondLst></p:cTn><p:tgtEl><p:spTgt spid="{sc.music_id}"/></p:tgtEl></p:cMediaNode></p:audio>')
+    xml = (f'<p:timing xmlns:p="{NS_P}" xmlns:a="{NS_A}" xmlns:r="{NS_R}"><p:tnLst><p:par><p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot"><p:childTnLst>'
+           f'<p:seq concurrent="1" nextAc="seek"><p:cTn id="2" dur="indefinite" nodeType="mainSeq"><p:childTnLst>{main_kids}</p:childTnLst></p:cTn>'
+           f'<p:prevCondLst><p:cond evt="onPrev" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:prevCondLst><p:nextCondLst><p:cond evt="onNext" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:nextCondLst></p:seq>'
+           f'{trig_xml}{music_node}</p:childTnLst></p:cTn></p:par></p:tnLst></p:timing>')
+    return xml.encode()
+
+# ----------------- Lumi helpers -----------------
+def lbox(cx, feet_y, size): return (cx - size / 2, feet_y - size * 0.93, size, size)
+
+def pose_timeline(sc, box, tl, name_prefix='Lumi'):
+    """tl = [(pose, t_ms), ...]; first pose is visible at load. Returns ({pose: spid}, effects)."""
+    ids, effs = {}, []
+    first = tl[0][0]
+    for pose in dict.fromkeys(p for p, _ in tl):
+        ids[pose] = sc.pic('lumi_' + pose, *box, name=f'{name_prefix} ({pose})', hidden=(pose != first), descr=f'Lumi the baby dragon, {pose} pose')
+    for n, (pose, t) in enumerate(tl):
+        if n > 0: effs.append(fx('appear', ids[pose], t))
+        if n + 1 < len(tl): effs.append(fx('disappear', ids[pose], tl[n + 1][1]))
+    return ids, effs
+
+def hop(ids, t, dy=-0.07, dur=260, times=1):
+    return [fx('move', sp, t, dx=0, dy=dy, dur=dur, rev=True, repeat=times if times > 1 else None) for sp in ids.values()]
