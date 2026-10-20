@@ -4,7 +4,7 @@
 // Sounds are added by post.py on slide transitions only (no sound on click reveals).
 const pptxgen = require("pptxgenjs");
 const measure = require("../fathah-plus/measure");
-const friends = require("../animals/friends");
+const friends = require("../characters/friends");
 const T = new pptxgen().ShapeType;
 const FATHA = "َ", KASRA = "ِ";
 // alif carries its hamza below with kasrah (إِ); before the kasrah appears it is shown as a bare alif

@@ -4,7 +4,7 @@
 // Sounds are added by post.py on slide transitions only (no sound on click reveals).
 const pptxgen = require("pptxgenjs");
 const measure = require("../fathah-plus/measure");
-const friends = require("../animals/friends");
+const friends = require("../characters/friends");
 const T = new pptxgen().ShapeType;
 const KASRA = "ِ", DAMMA = "ُ";
 const withD = l => l + DAMMA;                       // letter with its dammah (alif keeps its hamza above: أُ)
