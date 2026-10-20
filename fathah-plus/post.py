@@ -2,7 +2,7 @@
 usage: post.py in.raw.pptx out.pptx
 Objects named "C<k> ..." appear together on click k. Click reveals carry no sound;
 each slide (except the first) gets a transition effect and one of the transition sounds."""
-import zipfile, re, sys, wave, io
+import zipfile, re, sys, wave, io, hashlib
 import numpy as np
 R = 44100
 def wav(x):
@@ -79,8 +79,16 @@ def transition(n):
 
 src, dst = sys.argv[1:3]
 zin = zipfile.ZipFile(src); zout = zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED)
+# pptxgenjs stores a copy of a picture for every slide that uses it: keep one copy of each
+canon, first = {}, {}
+for n in zin.namelist():
+    if n.startswith("ppt/media/"):
+        canon[n] = first.setdefault(hashlib.sha1(zin.read(n)).hexdigest(), n)
 for it in zin.infolist():
+    if canon.get(it.filename, it.filename) != it.filename: continue
     d = zin.read(it.filename)
+    if it.filename.endswith(".rels"):
+        d = re.sub(r'Target="\.\./media/([^"]+)"', lambda mo: 'Target="../media/%s"' % canon.get("ppt/media/" + mo.group(1), "ppt/media/" + mo.group(1))[10:], d.decode()).encode()
     if it.filename == "[Content_Types].xml":
         t = d.decode()
         if 'Extension="wav"' not in t: t = t.replace("<Default ", '<Default Extension="wav" ContentType="audio/wav"/><Default ', 1)
