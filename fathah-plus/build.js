@@ -1,9 +1,10 @@
 // Fathah decks, improved: same letter order and beginning/middle/end method as all-letters/,
-// plus fathah-only sentences, a different background on every slide, and font sizes measured so
+// plus fathah-only sentences, animal and bird friends and a different background on every slide, and font sizes measured so
 // every letter, word and fathah stays inside its circle / panel / pill.
 // Sounds are added by post.py on slide transitions only (no sound on click reveals).
 const pptxgen = require("pptxgenjs");
 const measure = require("./measure");
+const ASPECT = require("../kasrah-plus/sprites/aspect.json");
 const T = new pptxgen().ShapeType;
 const FATHA = "َ";
 const FONT = "Arial";
@@ -82,6 +83,41 @@ function hsl(h, s, l) {
   const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
   return [f(0), f(8), f(4)].map(v => v.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
+// ---------- animal and bird friends: placed only where they touch no circle, panel, pill or sun/cloud ----------
+const GROUND_DECO = /hill|wave|sea floor|grass|stem|dune|moon surface|sun low/;
+const SPRITES = Object.keys(ASPECT);
+const GROUND = SPRITES.filter(n => n.startsWith("ground_")), SKY = SPRITES.filter(n => n.startsWith("sky_"));
+const SPECIES = [...new Set(GROUND.map(n => n.split("_")[1]))];
+const hit = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m;
+function place(s, sprite, cands, flip) {
+  const ar = ASPECT[sprite];
+  const blockers = content.concat(deco.filter(d => !GROUND_DECO.test(d.name)));
+  for (const c of cands) {
+    const w = c.h * ar, x = c.side === "r" ? c.x - w : c.x, b = { x, y: c.y, w, h: c.h };
+    if (x < 0 || x + w > W || b.y < 0 || b.y + b.h > H) continue;
+    if (blockers.some(o => hit(b, o, 0.08))) continue;
+    s.addImage({ path: `${__dirname}/../kasrah-plus/sprites/${sprite}.png`, x: b.x, y: b.y, w: b.w, h: b.h, flipH: !!flip, altText: sprite.split("_")[1] });
+    deco.push(Object.assign({ name: "Friend " + sprite }, b));
+    return true;
+  }
+  return false;
+}
+function friends(s, deckNo, i, th) {
+  const seed = deckNo * 131 + i * 7 + 5;           // +5: different friends from the kasrah decks
+  const sp1 = SPECIES[seed % SPECIES.length], sp2 = SPECIES[(seed + 3 + (i % 4)) % SPECIES.length];
+  const pose = k => GROUND.filter(n => n.split("_")[1] === k)[(seed + k.length) % 8];
+  const ground = side => { const c = []; for (let h = 2.0; h >= 0.75; h -= 0.05) for (const x of side === "l" ? [0.1, 0.5] : [9.9, 9.5])
+    c.push({ x, y: 5.55 - h, h, side }); return c; };
+  // walking up the side, then standing on the ground
+  const mid = side => { const c = []; for (let h = 1.7; h >= 0.9; h -= 0.05) c.push({ x: side === "l" ? 0.1 : 9.9, y: 2.8 - h / 2, h, side }); return c; };
+  place(s, pose(sp1), mid("l").concat(ground("l")), false);
+  place(s, pose(sp2), mid("r").concat(ground("r")), false);
+  const sky = SKY[(seed * 3) % SKY.length], right = i % 2 === 0;
+  const xs = right ? [9.9, 8.9, 7.9, 6.9, 6.1] : [0.1, 1.1, 2.1, 3.1, 3.9];
+  const c = []; for (let h = 0.85; h >= 0.4; h -= 0.05) xs.forEach(x => c.push({ x, y: 0.05, h, side: right ? "r" : "l" }));
+  place(s, sky, c, right && sky.includes("bird"));
+}
+
 const SCENES = ["meadow", "night", "sea", "garden", "space", "sunset"];
 const used = new Set();
 function background(deckNo, i) {
@@ -96,14 +132,14 @@ function background(deckNo, i) {
 
 // ---------- drawing ----------
 let content, deco;                                  // boxes on the current slide, for the overlap check
-function box(list, x, y, w, h) { list.push({ x, y, w, h }); }
+function box(list, x, y, w, h, name) { list.push({ x, y, w, h, name }); }
 function arText(s, text, o) {
   s.addText(text, Object.assign({ fontFace: FONT, color: INK, align: "center", valign: "middle",
     margin: 0, isTextBox: true, rtlMode: true, lang: "ar-SA", fit: "none", wrap: false }, o));
 }
 function shape(s, kind, o, name, isDeco) {
   s.addShape(kind, Object.assign({ objectName: name }, o));
-  if (isDeco) box(deco, o.x, o.y, o.w, o.h); else box(content, o.x, o.y, o.w, o.h);
+  if (isDeco) box(deco, o.x, o.y, o.w, o.h, name); else box(content, o.x, o.y, o.w, o.h, name);
 }
 function scenery(s, { scene, hue }) {
   const d = (k, x, y, w, h, color, name, extra) => shape(s, T[k], Object.assign({ x, y, w, h,
@@ -257,6 +293,7 @@ function sentenceSlide(s, sentence, th) {
       content = []; deco = [];
       scenery(s, th);
       if (sl.letters) letterSlide(s, sl.letters, th); else sentenceSlide(s, sl.sentence, th);
+      friends(s, deckNo, i, th);
       checkOverlap(`${file} slide ${i + 1}`);
     });
     await pres.writeFile({ fileName: `${outDir}/${file}.raw.pptx` });
