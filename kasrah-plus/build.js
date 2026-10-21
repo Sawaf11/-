@@ -268,7 +268,7 @@ function sentenceSlide(s, sentence, th) {
       content = []; deco = [];
       scenery(s, th);
       if (sl.letters) letterSlide(s, sl.letters, th); else sentenceSlide(s, sl.sentence, th);
-      friends(s, { content, deco, W, H }, deckNo * 131 + i * 7 + 0, th.scene);
+      if (!process.env.NO_PICTURES) friends(s, { content, deco, W, H }, deckNo * 131 + i * 7 + 0, th.scene);
       checkOverlap(`${file} slide ${i + 1}`);
     });
     await pres.writeFile({ fileName: `${outDir}/${file}.raw.pptx` });

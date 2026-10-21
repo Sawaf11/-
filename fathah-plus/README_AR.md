@@ -14,3 +14,6 @@
 NODE_PATH=<مجلد node_modules فيه pptxgenjs و @fontsource/noto-sans-arabic> node build.js <مجلد>
 python3 post.py <مجلد>/01-alif.raw.pptx 01-alif.pptx
 ```
+
+## نسخة بدون صور
+في مجلد `no-pictures/` نفس الملفات بلا أطفال ولا حيوانات ولا طيور (الخلفيات والزينة المرسومة باقية). إعادة البناء: نفس الأمر مع `NO_PICTURES=1`.
