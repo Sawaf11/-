@@ -159,8 +159,10 @@ function icon(s, sun, x, y, d, name) {
 // caption in a coloured strip
 function strip(s, text, x, y, w, color, name) {
   shape(s, T.roundRect, { x, y, w, h: 0.6, rectRadius: 0.2, fill: { color }, line: { width: 0 } }, name + " box");
-  const f = centred(text, 30, inRect(w, 0.6, 0.05));
-  arText(s, text, { x, y: y + f.dy, w, h: 0.6, fontSize: f.pt, color: "FFFFFF", objectName: name });
+  const f = centred(text, 26, inRect(w, 0.6, 0.08));
+  // labels are English, set left to right in Arial
+  s.addText(text, { x, y: y + f.dy, w, h: 0.6, fontSize: f.pt, fontFace: "Arial", bold: true, color: "FFFFFF", align: "center", valign: "middle",
+    margin: 0, isTextBox: true, fit: "none", wrap: false, objectName: name });
 }
 
 // ---------- the letters ----------
@@ -189,10 +191,10 @@ for (const [l, [w]] of Object.entries(WORDS)) {
 }
 if (MOONS.length + SUNS.length !== 28 || ORDER.length !== 28) throw new Error("letter count");
 
-const N_AL = "«ال» حرفان: همزة وصل «ٱ» ولام. تُكتب اللام دائماً، لكنها تُنطق مع بعض الحروف ولا تُنطق مع بعضها. نسمّي الحروف التي تُنطق معها اللام قمرية، والتي لا تُنطق معها شمسية.";
-const N_MOON = "اللام القمرية: على اللام سكون المصحف «ۡ»، فننطقها واضحة: «ٱلۡقَمَرُ» = اَلۡقَمَرُ (al-qamaru). الحروف القمرية 14 يجمعها: «ٱبۡغِ حَجَّكَ وَخَفۡ عَقِيمَهُۥ».";
-const N_SUN = "اللام الشمسية: اللام بلا أي علامة، والحرف بعدها عليه شدة، فتدخل اللام فيه ولا تُنطق: «ٱلشَّمۡسُ» = اَشَّمۡسُ (ash-shamsu). الحروف الشمسية هي الـ14 الباقية.";
-const N_TIP = "في المصحف لا نحتاج حفظ القائمة عند القراءة: إذا رأيت سكوناً على اللام فانطقها، وإذا رأيت اللام بلا علامة وبعدها شدة فلا تنطقها.";
+const N_AL = "Al (ال) is two letters: a connecting hamza ٱ and a lam. The lam is always written, but it is pronounced before some letters and silent before others. The letters where we say the lam are the MOON letters; the letters where the lam is silent are the SUN letters.";
+const N_MOON = "Moon lam: the lam carries the Quranic sukun, so we pronounce it clearly: al-qamaru (the moon). There are 14 moon letters, gathered in the phrase ٱبۡغِ حَجَّكَ وَخَفۡ عَقِيمَهُۥ.";
+const N_SUN = "Sun lam: the lam has no mark and the next letter has a shaddah, so the lam merges into it and is not pronounced: ash-shamsu (the sun), not al-shamsu. The other 14 letters are sun letters.";
+const N_TIP = "When reading the Mushaf you do not need the list: a sukun on the lam means say it; a lam with no mark and a shaddah after it means skip it.";
 
 // ---------- slides ----------
 function alSlide(s, th) {
@@ -202,9 +204,9 @@ function alSlide(s, th) {
   panel(s, 3.4, PY, PW, PH, MOON, "Panel lam"); arRuns(s, "ل", 3.4, PY, PW, PH, 150, "C2 lam");
   shape(s, T.leftArrow, { x: 2.6, y: PY + PH / 2 - 0.3, w: 0.65, h: 0.6, fill: { color: hsl(th.hue + 220, 0.6, 0.45) }, line: { width: 0 } }, "C3 arrow");
   panel(s, 0.4, PY, 2.05, PH, "F2B134", "Panel al", "FFFBE3"); arRuns(s, "ٱل", 0.4, PY, 2.05, PH, 150, "C3 al");
-  strip(s, "همزة وصل", 6.9, PY + PH + 0.2, PW, GREEN, "C1 label hamza");
-  strip(s, "لام", 3.4, PY + PH + 0.2, PW, MOON, "C2 label lam");
-  strip(s, "ال", 0.4, PY + PH + 0.2, 2.05, "D9480F", "C3 label al");
+  strip(s, "Connecting hamza", 6.9, PY + PH + 0.2, PW, GREEN, "C1 label hamza");
+  strip(s, "Lam (L)", 3.4, PY + PH + 0.2, PW, MOON, "C2 label lam");
+  strip(s, "Al-", 0.4, PY + PH + 0.2, 2.05, "D9480F", "C3 label al");
   s.addNotes(N_AL);
 }
 // the two rules side by side
@@ -215,8 +217,8 @@ function ruleSlide(s, sun) {
   icon(s, sun, 5.5, PY + 0.08, 0.7, "C1 icon");
   shape(s, T.leftArrow, { x: 4.75, y: PY + PH / 2 - 0.3, w: 0.55, h: 0.6, fill: { color: col }, line: { width: 0 } }, "C2 arrow");
   panel(s, 0.4, PY, PW, PH, "F2B134", "Panel read", "FFFBE3"); arRuns(s, r, 0.4, PY, PW, PH, 130, "C2 read");
-  strip(s, sun ? "اللام بلا علامة + شدة" : "على اللام سكون", 5.4, PY + PH + 0.2, PW, col, "C3 label written");
-  strip(s, sun ? "لا ننطق اللام" : "ننطق اللام", 0.4, PY + PH + 0.2, PW, sun ? RED : GREEN, "C3 label read");
+  strip(s, sun ? "No mark on the lam + shaddah" : "A sukun on the lam", 5.4, PY + PH + 0.2, PW, col, "C3 label written");
+  strip(s, sun ? "Skip the L" : "Say the L", 0.4, PY + PH + 0.2, PW, sun ? RED : GREEN, "C3 label read");
   s.addNotes(sun ? N_SUN : N_MOON);
 }
 // the 14 letters of one kind in two rows, appearing one by one
@@ -230,7 +232,7 @@ function gridSlide(s, sun) {
     const f = centred(l, lpt, inCircle(d, 6));
     arText(s, l, { x, y: y + f.dy, w: d, h: d, fontSize: f.pt, objectName: `C${i + 1} letter ${i + 1}` });
   });
-  s.addNotes(sun ? "الحروف الشمسية الأربعة عشر: ت ث د ذ ر ز س ش ص ض ط ظ ل ن. معها لا تُنطق اللام، والحرف بعدها مشدد. " + N_TIP : N_MOON);
+  s.addNotes(sun ? "The 14 sun letters: ت ث د ذ ر ز س ش ص ض ط ظ ل ن. Before them the lam is silent and the letter is doubled. " + N_TIP : "The 14 moon letters: ا ب ج ح خ ع غ ف ق ك م و ه ي. Before them the lam has a sukun and is pronounced. " + N_MOON);
 }
 // one letter: is it a sun or a moon letter?
 function classifySlide(s, l) {
@@ -239,8 +241,8 @@ function classifySlide(s, l) {
   const f = centred(l, 170, inCircle(d, 10));
   arText(s, l, { x, y: y + f.dy, w: d, h: d, fontSize: f.pt, objectName: "Letter" });
   icon(s, sun, 2.6, 1.3, 1.6, "C1 icon");
-  strip(s, sun ? "حرف شمسي: لا ننطق اللام" : "حرف قمري: ننطق اللام", 1.0, 3.2, 4.4, sun ? RED : GREEN, "C1 label");
-  s.addNotes(`هل «${l}» شمسي أم قمري؟ اسأل الطلاب قبل النقر. ` + (sun ? "شمسي: اللام قبله لا تُنطق، والحرف يُشدَّد." : "قمري: اللام قبله ساكنة وتُنطق."));
+  strip(s, sun ? "Sun letter: skip the L" : "Moon letter: say the L", 1.0, 3.2, 4.4, sun ? RED : GREEN, "C1 label");
+  s.addNotes(`Is ${l} a sun or a moon letter? Ask the learners before you click. ` + (sun ? "Sun: the lam before it is silent and the letter is doubled." : "Moon: the lam before it has a sukun and is pronounced."));
 }
 // the Quranic word: as written → as read when starting, with the sounds in Latin letters
 function wordSlide(s, th, l) {
@@ -252,8 +254,8 @@ function wordSlide(s, th, l) {
   const sf = centred(SAY[l], 30, inRect(PW - 0.3, PH * 0.3, 0.05));
   s.addText(SAY[l], { x: 0.55, y: PY + PH * 0.7 + sf.dy, w: PW - 0.3, h: PH * 0.3, fontSize: sf.pt, fontFace: "Arial", bold: true, color: "D9480F",
     align: "center", valign: "middle", margin: 0, objectName: "C2 sounds" });
-  strip(s, sun ? "اللام لا تُنطق والحرف مشدد" : "اللام ساكنة وتُنطق", 0.4, PY + PH + 0.2, 9.2, sun ? RED : GREEN, "C3 label");
-  s.addNotes(sun ? `«${plain(w)}»: اللام بلا علامة و«${l}» عليها شدة، فنقرأ «${r}».` : `«${plain(w)}»: على اللام سكون، فنقرأ «${r}» ونُظهر اللام.`);
+  strip(s, sun ? "The L is silent; the letter is doubled" : "The L has a sukun: say it", 0.4, PY + PH + 0.2, 9.2, sun ? RED : GREEN, "C3 label");
+  s.addNotes(sun ? `${SAY[l]}: the lam has no mark and the ${l} has a shaddah, so we read ${r}.` : `${SAY[l]}: the lam has a sukun, so we read ${r} and say the L.`);
 }
 // quiz: a word, then its sun / moon sign
 function quizSlide(s, l) {
@@ -261,7 +263,7 @@ function quizSlide(s, l) {
   panel(s, 2.5, 1.1, PW, PH, "868E96", "Panel word");          // neutral border: the colour would give the answer away
   arRuns(s, plain(w), 2.5, 1.1, PW, PH, 130, "Word");
   icon(s, sun, 4.4, 3.35, 1.1, "C1 icon");
-  s.addNotes("سؤال: هل تُنطق اللام هنا؟ انظر إلى ما فوق اللام قبل النقر. " + (sun ? "لا: اللام بلا علامة وبعدها شدة (شمسية)." : "نعم: على اللام سكون (قمرية)."));
+  s.addNotes("Question: is the lam pronounced here? Look above the lam before clicking. " + (sun ? "No: no mark on the lam and a shaddah after it (sun letter)." : "Yes: a sukun on the lam (moon letter)."));
 }
 
 const QURAN = ["وَٱلشَّمۡسِ وَضُحَىٰهَا", "وَٱلۡقَمَرِ إِذَا تَلَىٰهَا", "ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ", "مَٰلِكِ يَوۡمِ ٱلدِّينِ",
@@ -304,7 +306,7 @@ function sentenceSlide(s, sentence, th) {
   ORDER.forEach(l => slides.push({ classify: l }, { word: l }));
   QUIZ.forEach(l => slides.push({ quiz: l }));
   QURAN.forEach(q => slides.push({ sentence: q }));
-  const strings = ["ٱ", "ل", "ٱل", "همزة وصل", "لام", "ال", "اللام بلا علامة + شدة", "على اللام سكون", "لا ننطق اللام", "ننطق اللام",
+  const strings = ["ٱ", "ل", "ٱل", "Connecting hamza", "Lam (L)", "Al-", "No mark on the lam + shaddah", "A sukun on the lam", "Skip the L", "Say the L", "Sun letter: skip the L", "Moon letter: say the L", "The L is silent; the letter is doubled", "The L has a sukun: say it", "اللام بلا علامة + شدة", "على اللام سكون", "لا ننطق اللام", "ننطق اللام",
     "حرف شمسي: لا ننطق اللام", "حرف قمري: ننطق اللام", "اللام لا تُنطق والحرف مشدد", "اللام ساكنة وتُنطق", "اَشَّمۡسُ", "اَلۡقَمَرُ",
     "ٱلشَّمۡسُ", "ٱلۡقَمَرُ", ...MOONS, ...SUNS, ...Object.values(SAY), ...Object.values(WORDS).flatMap(([w, r]) => [plain(w), r]),
     ...QURAN.flatMap(q => [q, ...q.split(" ")])];
@@ -324,7 +326,7 @@ function sentenceSlide(s, sentence, th) {
     else if (sl.classify) classifySlide(s, sl.classify);
     else if (sl.word) wordSlide(s, th, sl.word);
     else if (sl.quiz) quizSlide(s, sl.quiz);
-    else { sentenceSlide(s, sl.sentence, th); s.addNotes("ابحث عن «ال» في الآية: هل على اللام سكون (تُنطق) أم بعدها شدة (لا تُنطق)؟"); }
+    else { sentenceSlide(s, sl.sentence, th); s.addNotes("Find every al- in the verse: a sukun on the lam (say it) or a shaddah after it (skip it)?"); }
     checkOverlap(`slide ${i + 1}`);
   });
   await pres.writeFile({ fileName: `${process.argv[2] || "."}/Sun-and-Moon-Letters.raw.pptx` });

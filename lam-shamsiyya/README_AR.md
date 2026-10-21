@@ -1,6 +1,6 @@
 # اللام الشمسية والقمرية (بدون صور)
 
-`Sun-and-Moon-Letters.pptx`: 79 شريحة، بسكون المصحف «ۡ» وخط Traditional Arabic.
+`Sun-and-Moon-Letters.pptx`: 79 شريحة، بسكون المصحف «ۡ» وخط Traditional Arabic. **الكتابات على الشرائح وملاحظات المعلّم بالإنجليزية** (Say the L / Skip the L، Moon letter / Sun letter)، والأمثلة بالعربية.
 
 1. **«ال» حرفان:** همزة وصل «ٱ» + لام.
 2. **القاعدتان:**
