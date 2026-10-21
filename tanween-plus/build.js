@@ -29,6 +29,16 @@ const NOTE_ALIF = "تنوين الفتح لا بد له من ألف فارغة �
 const NOTE_HAMZA = "استثناء: على الهمزة فوق الألف (أً) يجلس تنوين الفتح على الألف نفسها، فلا نضيف ألفاً ثانية، مثل «خَطَأً».";
 const NOTE_RULE = "قاعدة تنوين الفتح: «بً» وحدها خطأ (العلامة الحمراء)، والصحيح «بًا» بألف فارغة بعدها (العلامة الخضراء). الألف لا تُقرأ، والصوت «بَنۡ».";
 const NOTE_EXC = "الاستثناءات: لا نضيف ألفاً بعد تنوين الفتح في حرفين: التاء المربوطة (ةً) مثل «شَجَرَةً»، والهمزة على الألف (أً) مثل «خَطَأً». ويأتي لاحقاً: الهمزة بعد الألف (سَمَاءً) والألف المقصورة (هُدًى).";
+// ---------- the opening lesson: tanween = a vowel + a noon with sukun (Quranic sukun ۡ) ----------
+const SUKUN = "ۡ", NOON = "ن" + SUKUN, QFONT = "Traditional Arabic";       // QFONT draws the Quranic sukun
+const VOWELS = [FATHA, "ِ", "ُ"], VNAME = ["فتحة", "كسرة", "ضمة"], TNAME = ["تنوين الفتح", "تنوين الكسر", "تنوين الضم"];
+const WORDS = [["قَمَرًا", "قَمَرَنۡ"], ["قَلَمٍ", "قَلَمِنۡ"], ["وَلَدٌ", "وَلَدُنۡ"]];
+const writtenOf = (X, kind) => X + TANS[kind] + (kind === 0 ? "ا" : "");
+const NOTE_INTRO = [
+  "التنوين حرفان في الصوت: حركة على الحرف ثم نون ساكنة. علامة تنوين الفتح «ـً» فتحتان: الفتحة الأولى هي حركة الحرف، والثانية تدل على نون ساكنة «نۡ» نسمعها ولا نكتبها.",
+  "التنوين حرفان في الصوت: حركة على الحرف ثم نون ساكنة. علامة تنوين الكسر «ـٍ» كسرتان: الكسرة الأولى هي حركة الحرف، والثانية تدل على نون ساكنة «نۡ» نسمعها ولا نكتبها.",
+  "التنوين حرفان في الصوت: حركة على الحرف ثم نون ساكنة. علامة تنوين الضم «ـٌ» ضمتان: الضمة الأولى هي حركة الحرف، والثانية تدل على نون ساكنة «نۡ» نسمعها ولا نكتبها.",
+];
 const NOTE_NOALIF = "تنوين الكسر وتنوين الضم لا يحتاجان ألفاً: العلامة على الحرف الأخير، وتُقرأ «ـِنۡ» (تنوين الكسر) أو «ـُنۡ» (تنوين الضم). تنوين الفتح وحده يضيف ألفاً.";
 
 // ---------- sentences: fathah, kasrah, dammah and tanween only (no sukun or shaddah yet) ----------
@@ -72,6 +82,18 @@ function fitRect(s, w, h, pad, maxPt) {
   }
   throw new Error("cannot fit " + s);
 }
+// like fitCircle / fitRect, but the text box is moved up or down so the ink sits in the middle of the shape
+// (tall marks and descenders no longer push the size down); returns { pt, dy } with dy in inches
+function centred(s, maxPt, fits) {
+  const m = M[s], mid = (0.35 + (m.d - m.a) / 2);           // ink centre below the box centre, in em
+  for (let pt = maxPt; pt > 8; pt--) {
+    const em = pt / 72, dy = -mid * em;
+    if (inkBox(s, pt).every(k => fits({ l: k.l, r: k.r, t: k.t + dy, b: k.b + dy }))) return { pt, dy };
+  }
+  throw new Error("cannot fit " + s);
+}
+const inCircle = (d, ringPt) => { const r = d / 2 - ringPt / 72 - 0.1; return k => [k.l, k.r].every(x => [k.t, k.b].every(y => Math.hypot(x, y) <= r)); };
+const inRect = (w, h, pad) => k => -k.l <= w / 2 - pad && k.r <= w / 2 - pad && -k.t <= h / 2 - pad && k.b <= h / 2 - pad;
 const inkW = (s, pt) => (M[s].l + M[s].r) * pt / 72;
 
 // ---------- colours and backgrounds ----------
@@ -243,6 +265,61 @@ function exceptionSlide(s) {
   s.addNotes(NOTE_EXC);
 }
 
+// a caption in a coloured box, for the teacher to point at
+function caption(s, text, x, y, w, color, k, name) {
+  shape(s, T.roundRect, { x, y, w, h: 0.62, rectRadius: 0.2, fill: { color }, line: { width: 0 } }, `C${k} ${name} box`);
+  const f = centred(text, 34, inRect(w, 0.62, 0.05));
+  arText(s, text, { x, y: y + f.dy, w, h: 0.62, fontSize: f.pt, color: "FFFFFF", fontFace: QFONT, objectName: `C${k} ${name}` });
+}
+// the mark is two signs: [ـً] = [ـَ] + [نۡ]
+function markSlide(s, kind, th) {
+  const PW = 2.5, PH = 2.1, PY = 1.2, xs = [7.1, 3.75, 0.4];
+  const items = [["ـ" + TANS[kind], TNAME[kind], "1971C2"], ["ـ" + VOWELS[kind], VNAME[kind], "2F9E44"], [NOON, "نون ساكنة", "E03131"]];
+  const pt = Math.min(...items.map(it => centred(it[0], 150, inRect(PW, PH, 0.25)).pt));
+  items.forEach(([t, label, color], i) => {
+    const k = i === 0 ? 1 : i + 2, f = centred(t, pt, inRect(PW, PH, 0.25));
+    shape(s, T.roundRect, { x: xs[i], y: PY, w: PW, h: PH, rectRadius: 0.3, fill: { color: "FFFFFF" }, line: { color, width: 8 } }, `Panel ${i + 1}`);
+    arText(s, t, { x: xs[i], y: PY + f.dy, w: PW, h: PH, fontSize: f.pt, fontFace: QFONT, objectName: `C${k} T${i + 1} sign` });
+    caption(s, label, xs[i], PY + PH + 0.18, PW, color, k, `L${i + 1} label`);
+  });
+  shape(s, T.mathEqual, { x: 6.38, y: PY + PH / 2 - 0.3, w: 0.6, h: 0.6, fill: { color: hsl(th.hue + 180, 0.7, 0.5) }, line: { color: "FFFFFF", width: 1.5 } }, "C2 E equals");
+  shape(s, T.mathPlus, { x: 3.03, y: PY + PH / 2 - 0.3, w: 0.6, h: 0.6, fill: { color: hsl(th.hue + 180, 0.7, 0.5) }, line: { width: 0 } }, "C3 P plus");
+  s.addNotes(NOTE_INTRO[kind]);
+}
+// X + vowel and a sakin noon join into the sound of the tanween: بَ + نۡ → بَنۡ
+function noonJoinSlide(s, kind, X, th) {
+  const d = 1.9, CY = 2.8, cx = [7.35, 4.75], PX = 0.7, PW = 2.9, PH = 2.2;
+  const units = [[X, X + VOWELS[kind], "E8604C"], ["ن", NOON, "E03131"]];
+  const word = X + VOWELS[kind] + NOON;
+  const lpt = Math.min(...units.map(u => centred(u[1], 120, inCircle(d, 8)).pt)), rf = centred(word, 130, inRect(PW, PH, 0.22));
+  units.forEach((u, i) => shape(s, T.ellipse, { x: cx[i], y: CY - d / 2, w: d, h: d, fill: { color: "FFFFFF" }, line: { color: u[2], width: 9 } }, `Circle ${i + 1}`));
+  shape(s, T.roundRect, { x: PX, y: CY - PH / 2, w: PW, h: PH, rectRadius: 0.3, fill: { color: "FFFBE3" }, line: { color: "F2B134", width: 6 } }, "Result panel");
+  let k = 1;
+  units.forEach((u, i) => {
+    const f = centred(u[1], lpt, inCircle(d, 8)), o = { x: cx[i], y: CY - d / 2 + f.dy, w: d, h: d, fontSize: f.pt, fontFace: QFONT };
+    arText(s, u[0], Object.assign({ objectName: `C${k++} L${i + 1} letter` }, o));
+    arText(s, u[1], Object.assign({ objectName: `C${k++} V${i + 1} mark` }, o));
+    if (i === 0) shape(s, T.mathPlus, { x: cx[0] - 0.35 - 0.225, y: CY - 0.225, w: 0.45, h: 0.45, fill: { color: hsl(th.hue + 180, 0.7, 0.5) }, line: { width: 0 } }, `C${k++} P plus`);
+  });
+  shape(s, T.leftArrow, { x: PX + PW + 0.25, y: CY - 0.28, w: 0.7, h: 0.56, fill: { color: hsl(th.hue + 220, 0.6, 0.45) }, line: { width: 0 } }, `C${k++} A arrow`);
+  arText(s, word, { x: PX, y: CY - PH / 2 + rf.dy, w: PW, h: PH, fontSize: rf.pt, fontFace: QFONT, objectName: `C${k++} R sound` });
+  s.addNotes(`نجمع ${VNAME[kind] === "فتحة" ? "الحرف بفتحته" : VNAME[kind] === "كسرة" ? "الحرف بكسرته" : "الحرف بضمته"} مع نون ساكنة: ${X + VOWELS[kind]} + ${NOON} = ${word}. هذا هو صوت التنوين.`);
+}
+// as written (right) → as it sounds (left)
+function writtenReadSlide(s, written, read, th, note) {
+  const PW = 3.9, PH = 2.2, PY = 1.15;
+  const pt = Math.min(centred(written, 140, inRect(PW, PH, 0.25)).pt, centred(read, 140, inRect(PW, PH, 0.25)).pt);
+  const A = centred(written, pt, inRect(PW, PH, 0.25)), B = centred(read, pt, inRect(PW, PH, 0.25));
+  shape(s, T.roundRect, { x: 5.6, y: PY, w: PW, h: PH, rectRadius: 0.3, fill: { color: "FFFFFF" }, line: { color: "1971C2", width: 8 } }, "Panel written");
+  shape(s, T.roundRect, { x: 0.5, y: PY, w: PW, h: PH, rectRadius: 0.3, fill: { color: "FFFBE3" }, line: { color: "F2B134", width: 8 } }, "Panel read");
+  arText(s, written, { x: 5.6, y: PY + A.dy, w: PW, h: PH, fontSize: A.pt, fontFace: QFONT, objectName: "C1 W written" });
+  caption(s, "نكتب", 5.6, PY + PH + 0.18, PW, "1971C2", 1, "L1 label");
+  shape(s, T.leftArrow, { x: 4.6, y: PY + PH / 2 - 0.3, w: 0.8, h: 0.6, fill: { color: hsl(th.hue + 220, 0.6, 0.45) }, line: { width: 0 } }, "C2 A arrow");
+  arText(s, read, { x: 0.5, y: PY + B.dy, w: PW, h: PH, fontSize: B.pt, fontFace: QFONT, objectName: "C3 R read" });
+  caption(s, "نقرأ", 0.5, PY + PH + 0.18, PW, "D9480F", 3, "L2 label");
+  s.addNotes(note);
+}
+
 function sentenceSlide(s, sentence, th) {
   const words = sentence.split(" ");
   // word pills (first word on the right), one font size for the row
@@ -277,15 +354,24 @@ function sentenceSlide(s, sentence, th) {
 (async () => {
   const plan = KINDS.map((K, kind) => {
     const intro = kind === 0 ? NOTE_ALIF : NOTE_NOALIF;
-    const slides = kind === 0
+    // opening lesson: the mark = vowel + sakin noon; with ب and ت; then a whole word
+    const lesson = [{ mark: true }];
+    ["ب", "ت"].forEach(X => lesson.push({ join: X }, { pair: [writtenOf(X, kind), X + VOWELS[kind] + NOON],
+      note: `نكتب «${writtenOf(X, kind)}» ونقرأ «${X + VOWELS[kind] + NOON}»: النون الساكنة لا تُكتب، لكننا ننطقها.${kind === 0 ? " والألف بعد تنوين الفتح لا تُقرأ." : ""}` }));
+    lesson.push({ pair: WORDS[kind], note: `في الكلمة أيضاً: نكتب «${WORDS[kind][0]}» ونقرأ «${WORDS[kind][1]}». التنوين في آخر الكلمة = حركة + نون ساكنة.` });
+    const slides = lesson.concat(kind === 0
       ? [{ rule: "ب" }, { letters: ["ب"], note: intro }, { rule: "ت" }, { letters: ["ت"], note: intro }, { exceptions: true }]
-      : [{ letters: ["ب"], note: intro }, { letters: ["ت"], note: intro }];
+      : [{ letters: ["ب"], note: intro }, { letters: ["ت"], note: intro }]);
     ALPHA.forEach(X => { slides.push({ letters: [X] }); partners(X).forEach(p => slides.push({ letters: [p, X] })); });
     SENTENCES[kind].forEach(sen => slides.push({ sentence: sen }));
     return { K, kind, slides };
   });
-  const strings = ["ا", "ة" + TANS[0], "أ" + TANS[0], "شَجَرَةً", "خَطَأً"];
+  const strings = ["ا", "ة" + TANS[0], "أ" + TANS[0], "شَجَرَةً", "خَطَأً", NOON, "ن", "نكتب", "نقرأ", "نون ساكنة",
+    ...TANS.map(t => "ـ" + t), ...VOWELS.map(v => "ـ" + v), ...VNAME, ...TNAME];
   plan.forEach(({ kind, slides }) => slides.forEach(sl => {
+    if (sl.mark) return;
+    if (sl.join) { [0, 1, 2].forEach(k => strings.push(sl.join, sl.join + VOWELS[k], sl.join + VOWELS[k] + NOON)); return; }
+    if (sl.pair) { strings.push(...sl.pair); return; }
     if (sl.rule) strings.push(sl.rule + TANS[0], sl.rule + TANS[0] + "ا");
     else if (sl.exceptions) return;
     else if (sl.letters) {
@@ -306,7 +392,10 @@ function sentenceSlide(s, sentence, th) {
       s.background = { color: th.bg };
       content = []; deco = [];
       scenery(s, th);
-      if (sl.rule) ruleSlide(s, sl.rule);
+      if (sl.mark) markSlide(s, kind, th);
+      else if (sl.join) noonJoinSlide(s, kind, sl.join, th);
+      else if (sl.pair) writtenReadSlide(s, sl.pair[0], sl.pair[1], th, sl.note);
+      else if (sl.rule) ruleSlide(s, sl.rule);
       else if (sl.exceptions) exceptionSlide(s);
       else if (sl.letters) tanweenSlide(s, kind, sl.letters, th, sl.note);
       else sentenceSlide(s, sl.sentence, th);
