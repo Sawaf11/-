@@ -1,5 +1,6 @@
 // Kids, animals and birds for the fathah / kasrah / dammah decks.
-// Pictures are cut from the three grids in source/ by cut.py (white background removed); aspect.json holds width/height.
+// Pictures are cut from the three transparent grids in source/ by cut.py; aspect.json holds each picture's
+// width/height (ar) and the tallest it may be drawn in inches before it looks blurry (maxh).
 // A friend is placed only where it touches no circle, panel or pill and no sun/cloud/star decoration.
 const ASPECT = require("./aspect.json");
 const NAMES = Object.keys(ASPECT);
@@ -9,16 +10,17 @@ const GROUND_DECO = /hill|wave|sea floor|grass|stem|dune|moon surface|sun low/;
 const hit = (a, b, m) => a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m;
 
 function place(s, ctx, pic, cands) {
-  const ar = ASPECT[pic];
+  const { ar, maxh } = ASPECT[pic];
   const blockers = ctx.content.concat(ctx.deco.filter(d => !GROUND_DECO.test(d.name)));
   let best = null;                                  // the biggest spot that is free wins
   for (const c of cands) {
+    if (c.h > maxh) continue;
     const w = c.h * ar, x = c.side === "r" ? c.x - w : c.x, b = { x, y: c.y, w, h: c.h };
     if (x < 0 || x + w > ctx.W || b.y < 0 || b.y + b.h > ctx.H) continue;
     if (blockers.some(o => hit(b, o, 0.08))) continue;
     if (!best || b.h * b.w > best.h * best.w) best = b;
   }
-  if (!best || best.h < 0.95) return false;         // too small to look nice: leave the side empty
+  if (!best || best.h < Math.min(0.95, maxh)) return false;         // too small to look nice: leave the side empty
   s.addImage({ path: `${__dirname}/png/${pic}.png`, x: best.x, y: best.y, w: best.w, h: best.h, altText: pic.split("_")[0] });
   ctx.deco.push(Object.assign({ name: "Friend " + pic }, best));
   return true;
