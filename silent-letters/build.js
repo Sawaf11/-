@@ -150,10 +150,13 @@ function arRuns(s, t, x, y, w, h, maxPt, name) {
 function panel(s, x, y, w, h, line, name, fill) {
   shape(s, T.roundRect, { x, y, w, h, rectRadius: 0.25, fill: { color: fill || "FFFFFF" }, line: { color: line, width: 7 } }, name);
 }
+const isEnglish = t => /[A-Za-z]/.test(t);
 function strip(s, text, x, y, w, h, color, name) {
   shape(s, T.roundRect, { x, y, w, h, rectRadius: 0.2, fill: { color }, line: { width: 0 } }, name + " box");
-  const f = centred(text, 30, inRect(w, h, 0.06));
-  arText(s, text, { x, y: y + f.dy, w, h, fontSize: f.pt, color: "FFFFFF", objectName: name });
+  const f = centred(text, 26, inRect(w, h, 0.08));
+  if (isEnglish(text)) s.addText(text, { x, y: y + f.dy, w, h, fontSize: f.pt, fontFace: "Arial", bold: true, color: "FFFFFF",
+    align: "center", valign: "middle", margin: 0, isTextBox: true, fit: "none", wrap: false, objectName: name });
+  else arText(s, text, { x, y: y + f.dy, w, h, fontSize: f.pt, color: "FFFFFF", objectName: name });
 }
 function title(s, text, color) { strip(s, text, 0.4, 0.98, 9.2, 0.58, color, "Title"); }
 function latin(s, text, x, y, w, h, name) {
@@ -192,64 +195,64 @@ function twoReadSlide(s, th, sl) {
   panel(s, 5.35, PY, PW, PH, sl.color, "Panel written");
   arRuns(s, sl.w, 5.35, PY, PW, PH, 110, "C1 written");
   shape(s, T.leftArrow, { x: 4.72, y: PY + PH / 2 - 0.25, w: 0.56, h: 0.5, fill: { color: hsl(th.hue + 220, 0.6, 0.45) }, line: { width: 0 } }, "C2 arrow");
-  [[sl.wasl, "وصلاً", sl.sayWasl, GREY], [sl.waqf, "وقفاً", sl.sayWaqf, GREEN]].forEach(([t, lab, say, col], i) => {
+  [[sl.wasl, "Connecting", sl.sayWasl, GREY], [sl.waqf, "Stopping", sl.sayWaqf, GREEN]].forEach(([t, lab, say, col], i) => {
     const y = PY + i * (half + 0.1), k = i + 2;
     panel(s, 0.4, y, PW, half, i ? GREEN : "868E96", `C${k} row ${i + 1}`, "FFFBE3");
-    strip(s, lab, 0.5, y + 0.12, 1.0, half - 0.24, col === GREY ? "868E96" : GREEN, `C${k} label ${i + 1}`);
-    arRuns(s, t, 1.55, y, PW - 1.25, half, 90, `C${k} read ${i + 1}`);
+    strip(s, lab, 0.5, y + 0.12, 1.45, half - 0.24, col === GREY ? "868E96" : GREEN, `C${k} label ${i + 1}`);
+    arRuns(s, t, 2.0, y, PW - 1.7, half, 90, `C${k} read ${i + 1}`);
   });
   strip(s, sl.tip, 0.4, PY + PH + 0.15, 9.2, 0.75, sl.color, "C4 tip");
-  s.addNotes(`${sl.note} (وصلاً: ${sl.sayWasl} — وقفاً: ${sl.sayWaqf})`);
+  s.addNotes(`${sl.note} (Connecting: ${sl.sayWasl}. Stopping: ${sl.sayWaqf}.)`);
 }
 
 // ---------- the lesson ----------
 const BLUE = "1971C2", ROUND = "C2255C", OBLONG = "5F3DC4", CONNECT = "E8590C", OTHER = "0B7285";
 const LESSON = [
-  { signs: true, color: BLUE, title: "حروف تُكتب ولا تُقرأ: كيف نعرفها؟", items: [
-      ["ا{" + Z + "}", "لا تُقرأ أبداً", ROUND], ["ا{" + R + "}", "تُقرأ عند الوقف", OBLONG], ["{ٱ}", "تسقط في الوصل", CONNECT]],
-    note: "في المصحف حروف تُكتب ولا تُقرأ. ثلاث علامات تدلنا: الدائرة الصغيرة «۟» فوق الحرف (لا يُقرأ أبداً)، والصفر المستطيل القائم «۠» (يُقرأ عند الوقف فقط)، وحروف بلا علامة تسقط عند الوصل (مثل همزة الوصل واللام الشمسية)." },
+  { signs: true, color: BLUE, title: "Letters that are written but not read: how to spot them", items: [
+      ["ا{" + Z + "}", "Never read", ROUND], ["ا{" + R + "}", "Read when stopping", OBLONG], ["{ٱ}", "Dropped when connecting", CONNECT]],
+    note: "In the Mushaf some letters are written but not pronounced. Three signs tell you: a small round circle on a letter (never read), an upright oval zero (read only when you stop on the word), and some letters with no sign at all that drop when you connect to the next word (hamzat al-wasl, the sun lam, a madd letter before a silent letter)." },
   // ----- small round zero: never read -----
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "قَالُو{ا" + Z + "}", r: "قَالُو", say: "qaa-loo",
-    tip: "ألف واو الجماعة: نكتبها ولا نقرؤها", note: "بعد واو الجماعة تُكتب ألف عليها دائرة صغيرة. لا تُقرأ في الوصل ولا في الوقف: «قَالُوا۟» نقرأ «قَالُو»." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "ءَامَنُو{ا" + Z + "}", r: "ءَامَنُو", say: "aa-ma-noo",
-    tip: "ألف واو الجماعة: نكتبها ولا نقرؤها", note: "«ءَامَنُوا۟»: الألف الأخيرة لا تُقرأ. نقف على الواو بمدٍّ طبيعي: آمَنُو." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "مِ{ا" + Z + "}ئَةَ", r: "مِئَةَ", say: "mi-'a-ta",
-    tip: "ألف «مِائَة»: لا تُقرأ، ونقرأ «مِئَة»", note: "«مِا۟ئَةَ» (مئة): الألف بعد الميم لا تُقرأ. لا نقول «مَائة» ولا «مِيئة»، بل «مِئَة»." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "مِ{ا" + Z + "}ئَتَيۡنِ", r: "مِئَتَيۡنِ", say: "mi-'a-tay-ni",
-    tip: "وكذلك «مِائَتَيۡن»", note: "«مِا۟ئَتَيۡنِ» (مئتين): الألف لا تُقرأ." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "أُ{و" + Z + "}لَٰٓئِكَ", r: "أُلَٰٓئِكَ", say: "u-laaa-'i-ka",
-    tip: "الواو في «أُولَٰئِك» لا تُقرأ", note: "«أُو۟لَٰٓئِكَ»: الواو عليها دائرة صغيرة فلا تُقرأ: «أُلَٰٓئِك». والألف الخنجرية بعد اللام تُمد لأن بعدها همزة." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "أُ{و" + Z + "}لُو{ا" + Z + "} ٱلۡأَلۡبَٰبِ", r: "أُلُلۡ أَلۡبَابِ", say: "u-lul al-baab",
-    tip: "حرفان لا يُقرآن: الواو الأولى والألف بعد الواو", note: "«أُو۟لُوا۟ ٱلۡأَلۡبَٰبِ»: الواو الأولى لا تُقرأ، والألف بعد الواو الثانية لا تُقرأ، والواو الثانية تسقط في الوصل لأن بعدها ساكناً: «أُلُلۡ أَلۡبَاب»." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "لِشَ{ا" + Z + "}يۡءٍ", r: "لِشَيۡءٍ", say: "li-shay-'in",
-    tip: "ألف «لِشَا۟يۡءٍ» لا تُقرأ", note: "سورة الكهف 23: «وَلَا تَقُولَنَّ لِشَا۟يۡءٍ»: نقرأ «لِشَيۡءٍ»." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "إِنَّ ثَمُودَ{ا" + Z + "}", r: "إِنَّ ثَمُودَ", say: "in-na tha-moo-da",
-    tip: "ألف «ثَمُودَا۟» لا تُقرأ", note: "سورة هود 68: «أَلَآ إِنَّ ثَمُودَا۟ كَفَرُوا۟ رَبَّهُمۡ»: نقرأ «ثَمُودَ» بلا ألف، وصلاً ووقفاً." },
-  { read: true, color: ROUND, title: "الدائرة الصغيرة: لا تُقرأ أبداً", w: "بِأَيۡ{ي" + Z + "}دٍ", r: "بِأَيۡدٍ", say: "bi-ay-din",
-    tip: "الياء الثانية في «بِأَيۡي۟دٍ» لا تُقرأ", note: "سورة الذاريات 47: «وَٱلسَّمَآءَ بَنَيۡنَٰهَا بِأَيۡي۟دٍ»: نقرأ «بِأَيۡدٍ»، الياء الثانية لا تُقرأ." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "قَالُو{ا" + Z + "}", r: "قَالُو", say: "qaa-loo",
+    tip: "The alif after the plural waw is written, not read", note: "After the plural waw (they) an alif is written with a small circle on it. It is never read, whether you connect or stop: qaaloo." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "ءَامَنُو{ا" + Z + "}", r: "ءَامَنُو", say: "aa-ma-noo",
+    tip: "Same here: stop on the waw, skip the alif", note: "aamanoo (they believed). The last alif is not read; the word ends on a long oo." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "مِ{ا" + Z + "}ئَةَ", r: "مِئَةَ", say: "mi-'a-ta",
+    tip: "The alif of mi'ah (hundred) is not read", note: "mi'ah (a hundred). Do not say maa'ah or mee'ah. The alif after the meem is not read." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "مِ{ا" + Z + "}ئَتَيۡنِ", r: "مِئَتَيۡنِ", say: "mi-'a-tay-ni",
+    tip: "Also mi'atayn (two hundred)", note: "mi'atayni (two hundred). The alif is not read." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "أُ{و" + Z + "}لَٰٓئِكَ", r: "أُلَٰٓئِكَ", say: "u-laaa-'i-ka",
+    tip: "The waw of ulaa'ika (those) is not read", note: "ulaa'ika (those). The waw carries a small circle, so it is not read. The small alif after the lam is stretched because a hamza follows it." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "أُ{و" + Z + "}لُو{ا" + Z + "} ٱلۡأَلۡبَٰبِ", r: "أُلُلۡ أَلۡبَابِ", say: "u-lul al-baab",
+    tip: "Two letters are not read: the first waw and the last alif", note: "ulul-albaab (people of understanding). The first waw is not read, the alif after the second waw is not read, and the second waw drops when connecting because a silent lam follows." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "لِشَ{ا" + Z + "}يۡءٍ", r: "لِشَيۡءٍ", say: "li-shay-'in",
+    tip: "The alif in li-shay'in is not read", note: "Surat al-Kahf 23: wa laa taqoolanna li-shay'in. Read li-shay'in, without the alif." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "إِنَّ ثَمُودَ{ا" + Z + "}", r: "إِنَّ ثَمُودَ", say: "in-na tha-moo-da",
+    tip: "The alif of Thamooda is not read", note: "Surat Hud 68: alaa inna Thamooda kafaroo rabbahum. Read Thamooda without an alif, connecting or stopping." },
+  { read: true, color: ROUND, title: "Small circle: never read", w: "بِأَيۡ{ي" + Z + "}دٍ", r: "بِأَيۡدٍ", say: "bi-ay-din",
+    tip: "The second yaa of bi-aydin is not read", note: "Surat adh-Dhariyat 47: was-samaa'a banaynaahaa bi-aydin. The second yaa is not read." },
   // ----- upright oblong zero: read only when stopping -----
-  { two: true, color: OBLONG, title: "الصفر المستطيل: تُقرأ عند الوقف فقط", w: "أَنَ{ا" + R + "}", wasl: "أَنَ", sayWasl: "a-na", waqf: "أَنَ[ا]", sayWaqf: "a-naa",
-    tip: "في الوصل لا نقرأ الألف، وعند الوقف نقرؤها", note: "«أَنَا۠»: إذا وصلناها بما بعدها نقرأ «أَنَ» بلا ألف (أَنَ نَذِيرٌ)، وإذا وقفنا عليها نقرأ «أَنَا» بالألف." },
-  { two: true, color: OBLONG, title: "الصفر المستطيل: تُقرأ عند الوقف فقط", w: "لَّٰكِنَّ{ا" + R + "}", wasl: "لَٰكِنَّ", sayWasl: "laa-kin-na", waqf: "لَٰكِنَّ[ا]", sayWaqf: "laa-kin-naa",
-    tip: "«لَّٰكِنَّا۠ هُوَ ٱللَّهُ رَبِّي»", note: "سورة الكهف 38: «لَّٰكِنَّا۠ هُوَ ٱللَّهُ رَبِّي»: في الوصل «لَٰكِنَّ هُوَ»، وعند الوقف «لَٰكِنَّا»." },
-  { two: true, color: OBLONG, title: "الصفر المستطيل: تُقرأ عند الوقف فقط", w: "ٱلظُّنُونَ{ا" + R + "}", wasl: "ٱلظُّنُونَ", sayWasl: "adh-dhu-noo-na", waqf: "ٱلظُّنُونَ[ا]", sayWaqf: "adh-dhu-noo-naa",
-    tip: "في آخر الآية نقف عليها بالألف", note: "سورة الأحزاب 10: «وَتَظُنُّونَ بِٱللَّهِ ٱلظُّنُونَا۠». في الوصل بلا ألف، وعند الوقف بالألف. ومثلها «ٱلرَّسُولَا۠» و«ٱلسَّبِيلَا۠» في الأحزاب." },
-  { two: true, color: OBLONG, title: "الصفر المستطيل: تُقرأ عند الوقف فقط", w: "ٱلسَّبِيلَ{ا" + R + "}", wasl: "ٱلسَّبِيلَ", sayWasl: "as-sa-bee-la", waqf: "ٱلسَّبِيلَ[ا]", sayWaqf: "as-sa-bee-laa",
-    tip: "ومثلها «ٱلرَّسُولَا۠»", note: "سورة الأحزاب 67: «فَأَضَلُّونَا ٱلسَّبِيلَا۠»." },
+  { two: true, color: OBLONG, title: "Upright oval: read only when you stop", w: "أَنَ{ا" + R + "}", wasl: "أَنَ", sayWasl: "a-na", waqf: "أَنَ[ا]", sayWaqf: "a-naa",
+    tip: "Connecting: no alif.  Stopping: say the alif", note: "anaa (I). Joined to the next word, read ana with a short a (ana nadheer). Stopping on it, read anaa with the alif." },
+  { two: true, color: OBLONG, title: "Upright oval: read only when you stop", w: "لَّٰكِنَّ{ا" + R + "}", wasl: "لَٰكِنَّ", sayWasl: "laa-kin-na", waqf: "لَٰكِنَّ[ا]", sayWaqf: "laa-kin-naa",
+    tip: "From al-Kahf 38: laakinna huwa-llaahu rabbee", note: "Surat al-Kahf 38. Connecting: laakinna huwa. Stopping: laakinnaa." },
+  { two: true, color: OBLONG, title: "Upright oval: read only when you stop", w: "ٱلظُّنُونَ{ا" + R + "}", wasl: "ٱلظُّنُونَ", sayWasl: "adh-dhu-noo-na", waqf: "ٱلظُّنُونَ[ا]", sayWaqf: "adh-dhu-noo-naa",
+    tip: "At the end of the verse we stop with the alif", note: "Surat al-Ahzab 10. Connecting without the alif, stopping with it. The same in ar-rasoolaa and as-sabeelaa in al-Ahzab." },
+  { two: true, color: OBLONG, title: "Upright oval: read only when you stop", w: "ٱلسَّبِيلَ{ا" + R + "}", wasl: "ٱلسَّبِيلَ", sayWasl: "as-sa-bee-la", waqf: "ٱلسَّبِيلَ[ا]", sayWaqf: "as-sa-bee-laa",
+    tip: "Also ar-rasoolaa", note: "Surat al-Ahzab 67: fa-adalloonas-sabeelaa." },
   // ----- no sign: dropped when connecting -----
-  { read: true, color: CONNECT, title: "بلا علامة: تسقط في الوصل", w: "بِسۡمِ {ٱ}للَّهِ", r: "بِسۡمِ للَّهِ", say: "bis-mil-laah",
-    tip: "همزة الوصل لا تُقرأ في وسط الكلام", note: "همزة الوصل تُكتب دائماً، لكنها لا تُقرأ إذا وصلنا الكلمة بما قبلها. (راجع ملف همزة الوصل.)" },
-  { read: true, color: CONNECT, title: "بلا علامة: تسقط في الوصل", w: "ٱ{ل}شَّمۡسُ", r: "اَشَّمۡسُ", say: "ash-sham-su",
-    tip: "اللام الشمسية تُكتب ولا تُقرأ", note: "اللام بلا علامة والحرف بعدها مشدد: لا تُقرأ. (راجع ملف اللام الشمسية والقمرية.)" },
-  { read: true, color: CONNECT, title: "بلا علامة: تسقط في الوصل", w: "فِ{ي} ٱلۡأَرۡضِ", r: "فِلۡ أَرۡضِ", say: "fil-ar-di",
-    tip: "حرف المد قبل حرف ساكن: يُكتب ولا يُمد", note: "إذا جاء بعد حرف المد حرف ساكن في الكلمة التالية، سقط حرف المد في النطق: «فِي ٱلۡأَرۡضِ» نقرأ «فِلۡأَرۡضِ»." },
-  { read: true, color: CONNECT, title: "بلا علامة: تسقط في الوصل", w: "وَقَالُ{وا" + Z + "} ٱلۡحَمۡدُ", r: "وَقَالُلۡ حَمۡدُ", say: "wa-qaa-lul ham-du",
-    tip: "الواو تسقط للساكن بعدها، والألف لا تُقرأ أبداً", note: "سورة فاطر 34: «وَقَالُوا۟ ٱلۡحَمۡدُ لِلَّهِ»: الألف لا تُقرأ أبداً (الدائرة)، والواو تسقط في الوصل لأن بعدها لاماً ساكنة." },
-  { two: true, color: CONNECT, title: "ألف تنوين الفتح", w: "عَلِيمً{ا}", wasl: "عَلِيمَنۡ", sayWasl: "'a-lee-man", waqf: "عَلِيمَ[ا]", sayWaqf: "'a-lee-maa",
-    tip: "في الوصل لا تُقرأ الألف، وعند الوقف نقرؤها ألف مد", note: "ألف تنوين الفتح لا تُقرأ في الوصل (نقرأ التنوين نوناً ساكنة)، وعند الوقف يذهب التنوين ونقرأ ألفاً مدية حركتين: «عَلِيمَا»." },
+  { read: true, color: CONNECT, title: "No sign: dropped when connecting", w: "بِسۡمِ {ٱ}للَّهِ", r: "بِسۡمِ للَّهِ", say: "bis-mil-laah",
+    tip: "Hamzat al-wasl is not read in the middle of speech", note: "The connecting hamza is always written, but not read when the word is joined to the word before it (see the Hamzat al-Wasl lesson)." },
+  { read: true, color: CONNECT, title: "No sign: dropped when connecting", w: "ٱ{ل}شَّمۡسُ", r: "اَشَّمۡسُ", say: "ash-sham-su",
+    tip: "The sun lam is written, not read", note: "The lam has no mark and the next letter has a shaddah, so the lam is not read (see the Sun and Moon Letters lesson)." },
+  { read: true, color: CONNECT, title: "No sign: dropped when connecting", w: "فِ{ي} ٱلۡأَرۡضِ", r: "فِلۡ أَرۡضِ", say: "fil-ar-di",
+    tip: "A madd letter before a silent letter is written, not stretched", note: "When a word ends with a madd letter and the next word begins with a silent letter, the madd letter is not pronounced: fil-ardi, not fee al-ardi." },
+  { read: true, color: CONNECT, title: "No sign: dropped when connecting", w: "وَقَالُ{وا" + Z + "} ٱلۡحَمۡدُ", r: "وَقَالُلۡ حَمۡدُ", say: "wa-qaa-lul ham-du",
+    tip: "The waw drops before the silent lam; the alif is never read", note: "Surat Fatir 34: wa qaalul-hamdu lillaah. The alif is never read (small circle), and the waw drops when connecting because a silent lam follows." },
+  { two: true, color: CONNECT, title: "The alif after fathatan", w: "عَلِيمً{ا}", wasl: "عَلِيمَنۡ", sayWasl: "'a-lee-man", waqf: "عَلِيمَ[ا]", sayWaqf: "'a-lee-maa",
+    tip: "Connecting: the alif is silent.  Stopping: read it as a long aa", note: "The alif after fathatan is not read when connecting (we say the tanween as a noon). When we stop, the tanween goes and we read a long alif of two counts: 'aleemaa." },
   // ----- written as one letter, read as another -----
-  { read: true, color: OTHER, title: "يُكتب حرف ويُقرأ غيره", w: "ٱلصَّلَ{و}ٰةَ", r: "اَلصَّلَ[ا]ةَ", say: "as-sa-laa-ta",
-    tip: "الواو لا تُقرأ: نقرأ الألف الصغيرة فوقها", note: "في «ٱلصَّلَوٰةَ» و«ٱلزَّكَوٰةَ» و«ٱلۡحَيَوٰةَ» تُكتب واو فوقها ألف خنجرية: العبرة بالألف الصغيرة، فلا ننطق الواو." },
+  { read: true, color: OTHER, title: "Written as one letter, read as another", w: "ٱلصَّلَ{و}ٰةَ", r: "اَلصَّلَ[ا]ةَ", say: "as-sa-laa-ta",
+    tip: "The waw is not read: we read the small alif on top of it", note: "In as-salaah, az-zakaah and al-hayaah a waw is written with a small (dagger) alif on it. Follow the small alif and do not pronounce the waw." },
 ];
 
 (async () => {
@@ -260,7 +263,7 @@ const LESSON = [
     ["w", "r", "wasl", "waqf"].forEach(k => sl[k] && strings.push(plain(sl[k])));
     ["say", "sayWasl", "sayWaqf", "tip"].forEach(k => sl[k] && strings.push(sl[k]));
   });
-  strings.push("وصلاً", "وقفاً");
+  strings.push("Connecting", "Stopping");
   M = await measure(strings);
   const pres = new pptxgen();
   pres.layout = "LAYOUT_16x9";
