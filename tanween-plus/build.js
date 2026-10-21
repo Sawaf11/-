@@ -25,14 +25,17 @@ const ALPHA = ["أ","ب","ت","ث","ج","ح","خ","د","ذ","ر","ز","س","ش",
 const seat = (X, kind) => (kind === 1 && X === "أ" ? "إ" : X);
 const bare = (X, kind) => (kind === 1 && X === "أ" ? "ا" : X);
 const partners = X => { const i = ALPHA.indexOf(X); return i >= 7 ? ALPHA.slice(0, i) : ALPHA.filter(l => l !== X).slice(0, 7); };
-const NOTE_ALIF = "تنوين الفتح يحتاج ألفاً: نكتب بعد الحرف ألفاً لا تُقرأ وحدها، هي كرسيّ يحمل الصوت «ـَنْ» (بَ + نْ = بًا). الدائرة الرمادية وعلامة المنع تعنيان أن هذه الألف صامتة. يُدرَّس لاحقاً: التاء المربوطة (ة) والهمزة على الألف في آخر الكلمة لا تأخذان ألفاً زائدة.";
-const NOTE_HAMZA = "على الهمزة فوق الألف (أً) يجلس تنوين الفتح على الألف نفسها، فلا نضيف ألفاً ثانية.";
+const NOTE_ALIF = "تنوين الفتح لا بد له من ألف فارغة بعده: «بً» خطأ، والصحيح «بًا». الألف لا تُقرأ وحدها، هي كرسيّ يحمل الصوت «ـَنْ» (بَ + نْ = بًا). الدائرة الرمادية وعلامة المنع تعنيان أن هذه الألف صامتة. الاستثناءات: التاء المربوطة (شَجَرَةً) والهمزة على الألف (خَطَأً).";
+const NOTE_HAMZA = "استثناء: على الهمزة فوق الألف (أً) يجلس تنوين الفتح على الألف نفسها، فلا نضيف ألفاً ثانية، مثل «خَطَأً».";
+const NOTE_RULE = "قاعدة تنوين الفتح: «بً» وحدها خطأ (العلامة الحمراء)، والصحيح «بًا» بألف فارغة بعدها (العلامة الخضراء). الألف لا تُقرأ، والصوت «بَنْ».";
+const NOTE_EXC = "الاستثناءات: لا نضيف ألفاً بعد تنوين الفتح في حرفين: التاء المربوطة (ةً) مثل «شَجَرَةً»، والهمزة على الألف (أً) مثل «خَطَأً». ويأتي لاحقاً: الهمزة بعد الألف (سَمَاءً) والألف المقصورة (هُدًى).";
 const NOTE_NOALIF = "تنوين الكسر وتنوين الضم لا يحتاجان ألفاً: العلامة على الحرف الأخير، وتُقرأ «ـِنْ» (تنوين الكسر) أو «ـُنْ» (تنوين الضم). تنوين الفتح وحده يضيف ألفاً.";
 
 // ---------- sentences: fathah, kasrah, dammah and tanween only (no sukun or shaddah yet) ----------
 // fathatan is followed by its silent alif; ة (taa marbuta) may carry the tanween
 const SENTENCES = [
-  ["رَسَمَ قَمَرًا", "أَكَلَ عِنَبًا", "شَرِبَ لَبَنًا", "رَكِبَ جَمَلًا", "حَمَلَ حَجَرًا", "صَعِدَ جَبَلًا", "زَرَعَ شَجَرًا", "أَخَذَ قَلَمًا"],
+  ["رَسَمَ قَمَرًا", "أَكَلَ عِنَبًا", "شَرِبَ لَبَنًا", "رَكِبَ جَمَلًا", "حَمَلَ حَجَرًا", "صَعِدَ جَبَلًا", "زَرَعَ شَجَرًا", "أَخَذَ قَلَمًا",
+   "رَسَمَ شَجَرَةً", "أَكَلَ ثَمَرَةً"],
   ["كَتَبَ بِقَلَمٍ", "لَعِبَ بِكُرَةٍ", "قَلَمُ وَلَدٍ", "وَرَقُ شَجَرٍ", "لَبَنُ بَقَرٍ", "صُوَرُ أَسَدٍ", "مَسَحَ بِيَدٍ", "رَسَمَ بِقَلَمٍ"],
   ["نَزَلَ مَطَرٌ", "ظَهَرَ قَمَرٌ", "نَبَتَ شَجَرٌ", "جَلَسَ وَلَدٌ", "قَلَمٌ وَوَرَقٌ", "أَبٌ وَأَخٌ", "عِنَبٌ وَرُطَبٌ", "عَسَلٌ وَلَبَنٌ"],
 ];
@@ -40,7 +43,9 @@ const MARKS = /[ً-ِ]/;                     // fathatan, dammatan, kasratan, fa
 SENTENCES.forEach((list, k) => list.forEach(s => {
   if (!/^[ء-يةً-ِ ]+$/.test(s)) throw new Error("mark not taught yet in " + s);
   if (!s.includes(TANS[k])) throw new Error("no " + KINDS[k].name + " in " + s);
+  // fathatan always takes an empty alif after it, except on ة and أ
   s.split(" ").forEach(w => [...w].forEach((ch, i, a) => {
+    if (ch === TANS[0] && (a[i + 1] === "ا") === ["ة", "أ"].includes(a[i - 1])) throw new Error("fathatan alif rule broken in " + w);
     if (MARKS.test(ch)) return;
     if (ch === "ا" && a[i - 1] === TANS[0] && i === a.length - 1) return;   // the silent alif of fathatan
     if (!MARKS.test(a[i + 1] || "")) throw new Error("letter without a mark in " + w);
@@ -160,7 +165,7 @@ function tanweenSlide(s, kind, letters, th, note) {
   const circles = [];
   if (p) circles.push({ c: p, full: p + FATHA });
   circles.push({ c: bare(X, kind), full: seat(X, kind) + mark });
-  if (alif && p) circles.push({ c: "ا", full: null, ring: GREY });
+  if (alif) circles.push({ c: "ا", full: null, ring: GREY });                // بً alone is wrong: always بًا
   const n = circles.length, CY = 2.8;
   const result = (p ? p + FATHA : "") + seat(X, kind) + mark + (alif ? "ا" : "");
   s.addNotes(note || (kind === 0 ? (alif ? NOTE_ALIF : NOTE_HAMZA) : NOTE_NOALIF));
@@ -204,6 +209,40 @@ function tanweenSlide(s, kind, letters, th, note) {
   order.forEach(f => f());
 }
 
+// a green tick (two thick lines) or a red cross under a panel, revealed on click k
+function verdict(s, ok, cx, y, k) {
+  if (!ok) return shape(s, T.mathMultiply, { x: cx - 0.35, y, w: 0.7, h: 0.7, fill: { color: "E03131" }, line: { width: 0 } }, `C${k} X wrong`);
+  const line = { color: "2F9E44", width: 12 };
+  shape(s, T.line, { x: cx - 0.3, y: y + 0.3, w: 0.22, h: 0.3, line }, `C${k} V tick a`);
+  shape(s, T.line, { x: cx - 0.08, y: y + 0.02, w: 0.42, h: 0.58, line, flipV: true }, `C${k} V tick b`);
+}
+// the rule: «بً» alone is wrong (red cross), «بًا» with its empty alif is right (green tick)
+function ruleSlide(s, X) {
+  const PW = 3.4, PH = 2.3, PY = 1.25, right = { x: 5.6, t: X + TANS[0], ok: false }, left = { x: 1.0, t: X + TANS[0] + "ا", ok: true };
+  const pt = Math.min(fitRect(right.t, PW, PH, 0.25, 150), fitRect(left.t, PW, PH, 0.25, 150));
+  [right, left].forEach((p, i) => {
+    shape(s, T.roundRect, { x: p.x, y: PY, w: PW, h: PH, rectRadius: 0.3, fill: { color: "FFFFFF" },
+      line: { color: p.ok ? "2F9E44" : "E03131", width: 8 } }, `Panel ${i + 1}`);
+    arText(s, p.t, { x: p.x, y: PY, w: PW, h: PH, fontSize: pt, objectName: `C${2 * i + 1} W${i + 1} word` });
+    verdict(s, p.ok, p.x + PW / 2, PY + PH + 0.2, 2 * i + 2);
+  });
+  s.addNotes(NOTE_RULE);
+}
+// the exceptions: ةً and أً take no alif, with a word for each
+function exceptionSlide(s) {
+  const PW = 3.5, PH = 3.5, PY = 1.0, TOP = 0.58;   // ending in the top part of the panel, a word under it
+  const items = [{ x: 5.3, tick: 9.4, end: "ة" + TANS[0], word: "شَجَرَةً" }, { x: 1.2, tick: 0.6, end: "أ" + TANS[0], word: "خَطَأً" }];
+  const ept = Math.min(...items.map(it => fitRect(it.end, PW, PH * TOP, 0.2, 150)));
+  const wpt = Math.min(...items.map(it => fitRect(it.word, PW, PH * (1 - TOP), 0.2, 90)));
+  items.forEach((it, i) => {
+    shape(s, T.roundRect, { x: it.x, y: PY, w: PW, h: PH, rectRadius: 0.3, fill: { color: "FFFBE3" }, line: { color: "2F9E44", width: 8 } }, `Panel ${i + 1}`);
+    arText(s, it.end, { x: it.x, y: PY, w: PW, h: PH * TOP, fontSize: ept, objectName: `C${3 * i + 1} E${i + 1} ending` });
+    arText(s, it.word, { x: it.x, y: PY + PH * TOP, w: PW, h: PH * (1 - TOP), fontSize: wpt, objectName: `C${3 * i + 2} E${i + 1} word` });
+    verdict(s, true, it.tick, PY + PH / 2 - 0.3, 3 * i + 3);
+  });
+  s.addNotes(NOTE_EXC);
+}
+
 function sentenceSlide(s, sentence, th) {
   const words = sentence.split(" ");
   // word pills (first word on the right), one font size for the row
@@ -238,16 +277,20 @@ function sentenceSlide(s, sentence, th) {
 (async () => {
   const plan = KINDS.map((K, kind) => {
     const intro = kind === 0 ? NOTE_ALIF : NOTE_NOALIF;
-    const slides = [{ letters: ["ب"], note: intro }, { letters: ["ت"], note: intro }];
+    const slides = kind === 0
+      ? [{ rule: "ب" }, { letters: ["ب"], note: intro }, { rule: "ت" }, { letters: ["ت"], note: intro }, { exceptions: true }]
+      : [{ letters: ["ب"], note: intro }, { letters: ["ت"], note: intro }];
     ALPHA.forEach(X => { slides.push({ letters: [X] }); partners(X).forEach(p => slides.push({ letters: [p, X] })); });
     SENTENCES[kind].forEach(sen => slides.push({ sentence: sen }));
     return { K, kind, slides };
   });
-  const strings = ["ا"];
+  const strings = ["ا", "ة" + TANS[0], "أ" + TANS[0], "شَجَرَةً", "خَطَأً"];
   plan.forEach(({ kind, slides }) => slides.forEach(sl => {
-    if (sl.letters) {
+    if (sl.rule) strings.push(sl.rule + TANS[0], sl.rule + TANS[0] + "ا");
+    else if (sl.exceptions) return;
+    else if (sl.letters) {
       const X = sl.letters[sl.letters.length - 1], p = sl.letters.length > 1 ? sl.letters[0] : "";
-      strings.push(seat(X, kind) + TANS[kind], bare(X, kind));
+      strings.push(seat(X, kind) + TANS[kind], bare(X, kind), X + TANS[kind] + "ا");
       if (p) strings.push(p + FATHA, (p + FATHA) + seat(X, kind) + TANS[kind] + (kind === 0 && X !== "أ" ? "ا" : ""));
     } else { strings.push(sl.sentence); sl.sentence.split(" ").forEach(w => strings.push(w)); }
   }));
@@ -263,7 +306,10 @@ function sentenceSlide(s, sentence, th) {
       s.background = { color: th.bg };
       content = []; deco = [];
       scenery(s, th);
-      if (sl.letters) tanweenSlide(s, kind, sl.letters, th, sl.note); else sentenceSlide(s, sl.sentence, th);
+      if (sl.rule) ruleSlide(s, sl.rule);
+      else if (sl.exceptions) exceptionSlide(s);
+      else if (sl.letters) tanweenSlide(s, kind, sl.letters, th, sl.note);
+      else sentenceSlide(s, sl.sentence, th);
       checkOverlap(`${K.file} slide ${i + 1}`);
     });
     await pres.writeFile({ fileName: `${outDir}/${K.file}.raw.pptx` });
