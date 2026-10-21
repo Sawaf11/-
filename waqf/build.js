@@ -136,7 +136,7 @@ const plain = t => t.replace(/[{}\[\]()<>]/g, "");
 function runs(t, pt) {
   const out = []; const re = /<([^>]*)>|\{([^}]*)\}|\[([^\]]*)\]|\(([^)]*)\)|([^{[(<]+)/g; let mm;
   while ((mm = re.exec(t))) {
-    if (mm[1] !== undefined) { out.push({ text: " " + mm[1] + " ", options: { color: RED, bold: true, fontSize: pt ? Math.max(10, Math.round(pt * 0.55)) : undefined } }); continue; }
+    if (mm[1] !== undefined) { out.push({ text: mm[1], options: { color: RED } }); continue; }   // a high stop mark: no space, it sits on the letter before
     mm = [mm[0], mm[2], mm[3], mm[4], mm[5]];
     if (mm[1] !== undefined) out.push({ text: mm[1], options: { color: RED } });
     else if (mm[2] !== undefined) out.push({ text: mm[2], options: { color: GREEN } });
@@ -261,26 +261,26 @@ const LESSON = [
     note: "Stopping is part of reciting correctly. A wrong stop can change the meaning; a wrong ending on the stopped word is a mistake in pronunciation. This lesson covers both, with the Madinah Mushaf (Hafs)." },
   // ----- part 1: signs -----
   { signs: true, color: SIGN, title: "Part 1: the stop signs", items: [["مـ", "Must\nstop"], ["لا", "Do not\nstop"], ["ج", "Stop\nor go"], ["صلى", "Better\ngo on"], ["قلى", "Better\nstop"], ["∴", "Stop at\none"], ["س", "Pause,\nno breath"]],
-    tip: "The signs are small letters printed above the end of a word.", note: "These small signs are printed above the line, after the word they belong to. They tell you whether stopping there is required, forbidden, allowed, better or not." },
-  { sx: true, color: SIGN, title: "Meem sign: you MUST stop (al-waqf al-lazim)", verse: "وَلَا يَحۡزُنكَ قَوۡلُهُمۡ <مـ> إِنَّ ٱلۡعِزَّةَ لِلَّهِ جَمِيعًا",
+    tip: "In the Mushaf these signs are printed small, ABOVE the last letter of the word.", note: "These small signs are printed above the line, after the word they belong to. They tell you whether stopping there is required, forbidden, allowed, better or not." },
+  { sx: true, color: SIGN, title: "Meem sign: you MUST stop (al-waqf al-lazim)", verse: "وَلَا يَحۡزُنكَ قَوۡلُهُمۡ<ۘ> إِنَّ ٱلۡعِزَّةَ لِلَّهِ جَمِيعًا",
     lines: ["Stop after qawluhum.", "If you connect, it sounds like THEY said 'all honour belongs to Allah'."],
     note: "Surat Yunus 65. The meem sign means stopping is required, because connecting would give a wrong meaning: the sentence 'all honour belongs to Allah' is from Allah, not the saying of the disbelievers." },
-  { sx: true, color: SIGN, title: "Laa sign: do NOT stop here", verse: "ٱلَّذِينَ تَتَوَفَّىٰهُمُ ٱلۡمَلَٰٓئِكَةُ طَيِّبِينَ <لا> يَقُولُونَ سَلَٰمٌ عَلَيۡكُمُ",
+  { sx: true, color: SIGN, title: "Laa sign: do NOT stop here", verse: "ٱلَّذِينَ تَتَوَفَّىٰهُمُ ٱلۡمَلَٰٓئِكَةُ طَيِّبِينَ<ۙ> يَقُولُونَ سَلَٰمٌ عَلَيۡكُمُ",
     lines: ["Do not stop on tayyibeen: the sentence is not finished.", "If you must stop for breath, go back and read it again joined."],
     note: "Surat an-Nahl 32. The laa sign means: do not stop here. If you run out of breath and stop, begin again from an earlier word so the meaning stays whole." },
-  { sx: true, color: SIGN, title: "Jeem sign: stop or go on, both are fine", verse: "نَّحۡنُ نَقُصُّ عَلَيۡكَ نَبَأَهُم بِٱلۡحَقِّ <ج> إِنَّهُمۡ فِتۡيَةٌ ءَامَنُوا۟ بِرَبِّهِمۡ",
+  { sx: true, color: SIGN, title: "Jeem sign: stop or go on, both are fine", verse: "نَّحۡنُ نَقُصُّ عَلَيۡكَ نَبَأَهُم بِٱلۡحَقِّ<ۚ> إِنَّهُمۡ فِتۡيَةٌ ءَامَنُوا۟ بِرَبِّهِمۡ",
     lines: ["You may stop after bil-haqq, or continue.", "Both are equally good."], note: "Surat al-Kahf 13. Jeem = jaa'iz (permissible), equal either way." },
-  { sx: true, color: SIGN, title: "Salaa sign: better to go on", verse: "فَلَا كَاشِفَ لَهُۥٓ إِلَّا هُوَ <صلى> وَإِن يَمۡسَسۡكَ بِخَيۡرٍ",
+  { sx: true, color: SIGN, title: "Salaa sign: better to go on", verse: "فَلَا كَاشِفَ لَهُۥٓ إِلَّا هُوَ<ۖ> وَإِن يَمۡسَسۡكَ بِخَيۡرٍ",
     lines: ["Stopping is allowed,", "but continuing is better."], note: "Surat al-An'am 17. Salaa (from al-waslu awlaa): connecting is preferred." },
-  { sx: true, color: SIGN, title: "Qalaa sign: better to stop", verse: "مَّا يَعۡلَمُهُمۡ إِلَّا قَلِيلٌ <قلى> فَلَا تُمَارِ فِيهِمۡ",
+  { sx: true, color: SIGN, title: "Qalaa sign: better to stop", verse: "مَّا يَعۡلَمُهُمۡ إِلَّا قَلِيلٌ<ۗ> فَلَا تُمَارِ فِيهِمۡ",
     lines: ["Continuing is allowed,", "but stopping is better."], note: "Surat al-Kahf 22. Qalaa (from al-waqfu awlaa): stopping is preferred." },
-  { sx: true, color: SIGN, title: "Three dots twice: stop at ONE of the two, not both", verse: "ذَٰلِكَ ٱلۡكِتَٰبُ لَا رَيۡبَ <∴> فِيهِ <∴> هُدًى لِّلۡمُتَّقِينَ",
+  { sx: true, color: SIGN, title: "Three dots twice: stop at ONE of the two, not both", verse: "ذَٰلِكَ ٱلۡكِتَٰبُ لَا رَيۡبَ<ۛ> فِيهِ<ۛ> هُدًى لِّلۡمُتَّقِينَ",
     lines: ["Stop after laa rayba  OR  after feeh, never at both.", "Each stop gives a correct meaning; both together break it."],
     note: "Surat al-Baqarah 2. The two sets of three dots (mu'aanaqah, embracing): if you stop at the first, read through the second; if you pass the first, you may stop at the second." },
-  { sx: true, color: SIGN, title: "The end of a verse", verse: "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ <1> ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ <2>",
+  { sx: true, color: SIGN, title: "The end of a verse", verse: "ٱلۡحَمۡدُ لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ <﴿٢﴾> ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ <﴿٣﴾>",
     lines: ["The circle with a number ends a verse.", "It is sunnah to stop at the end of each verse."],
     note: "Stopping at every verse end is the practice of the Prophet ﷺ, even when the meaning continues into the next verse." },
-  { sx: true, color: SIGN, title: "Small seen: saktah, a short pause without breath", verse: "وَلَمۡ يَجۡعَل لَّهُۥ عِوَجَا <س> قَيِّمًا",
+  { sx: true, color: SIGN, title: "Small seen: saktah, a short pause without breath", verse: "وَلَمۡ يَجۡعَل لَّهُۥ عِوَجَا<ۜ> قَيِّمًا",
     lines: ["Stop the sound for a moment, do NOT take a breath, then continue.", "Hafs: 4 places (al-Kahf 1, Ya-Sin 52, al-Qiyamah 27, al-Mutaffifin 14)."],
     note: "The saktah is a very short silence without breathing. In the reading of Hafs it is required in four places: عِوَجَا ۜ قَيِّمًا (al-Kahf 1-2), مِن مَّرۡقَدِنَا ۜ هَٰذَا (Ya-Sin 52), مَنۡ ۜ رَاقٍ (al-Qiyamah 27), بَلۡ ۜ رَانَ (al-Mutaffifin 14)." },
   // ----- part 2: how to stop -----
