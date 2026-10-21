@@ -56,20 +56,22 @@ const slidesFor = X => {
   return out;
 };
 // the joined word, as runs (the dagger alif is a smaller alif inside the word)
-// the dagger alif (U+0670) sits above its letter, a little to the left; it is drawn red
-const DAGGER_RED = "E03131", SHOW = () => (CFG.small ? "ـ" + CFG.madd : CFG.madd);     // in its own circle: on a kashida
-const redDagger = t => !t.includes("\u0670") ? t : t.split(/(\u0670)/).filter(Boolean).map(p => ({ text: p, options: p === "\u0670" ? { color: DAGGER_RED } : {} }));
+// the dagger alif is drawn as a small red alif BESIDE its letter (to the left), raised a little: a superscript "ا"
+const DAGGER_RED = "E03131", SHOW = () => (CFG.small ? "ا" : CFG.madd);
+// a new run every time (pptxgenjs changes the options it is given); 65% size, raised ~15% above the line
+const dag = pt => ({ text: "ا", options: { color: DAGGER_RED, fontSize: Math.round(SMALL * pt), baseline: 300 } });
+const redDagger = (t, pt) => !t.includes("\u0670") ? t : t.split(/(\u0670)/).filter(Boolean).map(p => (p === "\u0670" ? dag(pt) : { text: p, options: {} }));
 function wordRuns(units, pt) {
   const runs = []; let acc = "";
   units.forEach(u => {
     if (!u.madd) { acc += u.full; return; }
     if (!CFG.small) { acc += CFG.madd; return; }
-    runs.push({ text: acc, options: {} }); runs.push({ text: CFG.madd, options: { color: DAGGER_RED } }); acc = "";
+    runs.push({ text: acc, options: {} }); runs.push(dag(pt)); acc = "";
   });
   if (acc) runs.push({ text: acc, options: {} });
   return runs;
 }
-const wordText = units => units.map(u => (u.madd ? CFG.madd : u.full)).join("");
+const wordText = units => units.map(u => (u.madd ? (CFG.small ? "ا" : CFG.madd) : u.full)).join("");   // the small alif takes room
 
 // ---------- sentences: each has this file's madd and the file's letter ----------
 // (madd letters carry no sukun, as in the mushaf; dagger-alif sentences are Quranic phrases written with ٰ)
@@ -291,7 +293,7 @@ function maddSlide(s, units, th) {
   const fit = units.map(u => centred(u.madd ? SHOW() : u.full, u.madd ? 2 * G.fs : G.fs, inCircle(G.d, u.madd ? 10 : 8)));
   const lpt = Math.min(...fit.filter((f, i) => !units[i].madd).map(f => f.pt));     // letters share one size
   units.forEach((u, i) => { if (!u.madd) fit[i] = centred(u.full, lpt, inCircle(G.d, 8)); });
-  if (CFG.small) units.forEach((u, i) => { if (u.madd) fit[i] = centred(SHOW(), lpt, inCircle(G.d, 10)); });
+  if (CFG.small) units.forEach((u, i) => { if (u.madd) fit[i] = centred("ا", Math.round(SMALL * lpt), inCircle(G.d, 10)); });
   else units.forEach((u, i) => { if (u.madd) fit[i] = centred(CFG.madd, Math.min(fit[i].pt, Math.round(lpt * 1.15)), inCircle(G.d, 10)); });
   const word = wordText(units), rf = centred(word, G.rs, inRect(G.pw, G.ph, 0.22)), rpt = rf.pt;
   units.forEach((u, i) => shape(s, T.ellipse, { x: cx[i], y: CY - G.d / 2, w: G.d, h: G.d, fill: { color: "FFFFFF" },
@@ -305,7 +307,7 @@ function maddSlide(s, units, th) {
     if (u.madd) {
       // the stretch: an arrow over the madd circle comes with the madd letter
       const kk = k++;
-      arText(s, CFG.small ? [{ text: "ـ", options: {} }, { text: CFG.madd, options: { color: DAGGER_RED } }] : CFG.madd, Object.assign({}, o, { objectName: `C${kk} M${i + 1} madd` }));
+      arText(s, CFG.small ? [{ text: "ا", options: { color: DAGGER_RED } }] : CFG.madd, Object.assign({}, o, { objectName: `C${kk} M${i + 1} madd` }));
       shape(s, T.leftRightArrow, { x: cx[i] + G.d / 2 - 0.32, y: CY - G.d / 2 - 0.36, w: 0.64, h: 0.28,
         fill: { color: MADD_RING }, line: { width: 0 } }, `C${kk} S${i + 1} stretch`);
     } else {
@@ -354,7 +356,7 @@ function sentenceSlide(s, sentence, th) {
     if (fitRect(w, pw, PH, 0.2, pt) < pt) throw new Error("pill too small for " + w);
     shape(s, T.roundRect, { x, y: PY, w: pw, h: PH, rectRadius: 0.4, fill: { color: "FFFFFF" },
       line: { color: pillColors[i % 3], width: 6 } }, `C${i + 1} W${i + 1} pill`);
-    arText(s, CFG.small ? redDagger(w) : w, { x, y: PY, w: pw, h: PH, fontSize: pt, objectName: `C${i + 1} W${i + 1} word` });
+    arText(s, CFG.small ? redDagger(w, pt) : w, { x, y: PY, w: pw, h: PH, fontSize: pt, objectName: `C${i + 1} W${i + 1} word` });
     x -= GAP;
   });
   const n = words.length + 1;
@@ -366,7 +368,7 @@ function sentenceSlide(s, sentence, th) {
   if (fitRect(sentence, sw, SH, 0.22, spt) < spt) throw new Error("panel too small for " + sentence);
   shape(s, T.roundRect, { x: 5 - sw / 2, y: SY, w: sw, h: SH, rectRadius: 0.35, fill: { color: "FFFBE3" },
     line: { color: "F2B134", width: 6 } }, `C${n} S panel`);
-  arText(s, CFG.small ? redDagger(sentence) : sentence, { x: 5 - sw / 2, y: SY, w: sw, h: SH, fontSize: spt, objectName: `C${n} S sentence` });
+  arText(s, CFG.small ? redDagger(sentence, spt) : sentence, { x: 5 - sw / 2, y: SY, w: sw, h: SH, fontSize: spt, objectName: `C${n} S sentence` });
 }
 
 (async () => {
@@ -376,7 +378,7 @@ function sentenceSlide(s, sentence, th) {
     sentencesFor(file).forEach(sen => slides.push({ sentence: sen }));
     return { file, slides };
   });
-  const strings = MODE === "quran" ? QURAN.flatMap(q => [q[0], q[1]]) : [CFG.madd, "ـ" + CFG.madd];
+  const strings = MODE === "quran" ? QURAN.flatMap(q => [q[0], q[1]]) : [CFG.madd, "ـ" + CFG.madd, "ا"];
   plan.forEach(p => p.slides.forEach(sl => {
     if (sl.quran) return;
     if (sl.units) { sl.units.forEach(u => u.madd || strings.push(u.full, u.bare)); strings.push(wordText(sl.units)); }
