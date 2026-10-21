@@ -27,7 +27,7 @@ const CFG = {
             note: "مدّ الواو: الواو الساكنة المضموم ما قبلها، نحو «يَقُولُ». نمدّ الصوت بمقدار حركتين (بُ ← بُو). الواو لا تتصل بالحرف الذي بعدها." },
   yaa:    { mark: KASRA, madd: "ي", title: "Madd with yaa", hue: 250,
             note: "مدّ الياء: الياء الساكنة المكسور ما قبلها، نحو «قِيلَ». نمدّ الصوت بمقدار حركتين (بِ ← بِي)." },
-  dagger: { mark: FATHA, madd: "ا", small: true, title: "Dagger alif", hue: 320,
+  dagger: { mark: FATHA, madd: "\u0670", small: true, title: "Dagger alif", hue: 320,
             note: "الألف الخنجرية (الألف الصغيرة): تُلفظ ولا تُكتب ألفاً كبيرة، ولها حكم الألف الكبيرة نفسه: نمدّ بمقدار حركتين، نحو «هٰذَا» (هَاذَا) و«الرَّحۡمٰنِ» (الرَّحۡمَانِ). كُتبت صغيرة بجانب الحرف." },
   quran:  { title: "Quran small letters", hue: 30 },
 }[MODE];
@@ -56,12 +56,15 @@ const slidesFor = X => {
   return out;
 };
 // the joined word, as runs (the dagger alif is a smaller alif inside the word)
+// the dagger alif (U+0670) sits above its letter, a little to the left; it is drawn red
+const DAGGER_RED = "E03131", SHOW = () => (CFG.small ? "ـ" + CFG.madd : CFG.madd);     // in its own circle: on a kashida
+const redDagger = t => !t.includes("\u0670") ? t : t.split(/(\u0670)/).filter(Boolean).map(p => ({ text: p, options: p === "\u0670" ? { color: DAGGER_RED } : {} }));
 function wordRuns(units, pt) {
   const runs = []; let acc = "";
   units.forEach(u => {
     if (!u.madd) { acc += u.full; return; }
     if (!CFG.small) { acc += CFG.madd; return; }
-    runs.push({ text: acc, options: {} }); runs.push({ text: CFG.madd, options: { fontSize: Math.round(SMALL * pt) } }); acc = "";
+    runs.push({ text: acc, options: {} }); runs.push({ text: CFG.madd, options: { color: DAGGER_RED } }); acc = "";
   });
   if (acc) runs.push({ text: acc, options: {} });
   return runs;
@@ -209,8 +212,11 @@ function background(deckNo, i) {
 // ---------- drawing ----------
 let content, deco;                                  // boxes on the current slide, for the overlap check
 function box(list, x, y, w, h, name) { list.push({ x, y, w, h, name }); }
+// Arial has no Quranic marks (the head-of-khaa sukun ۡ and the other small signs): text with them uses Traditional Arabic
+const QURANIC = /[\u06D6-\u06ED]/;
 function arText(s, text, o) {
-  s.addText(text, Object.assign({ fontFace: FONT, color: INK, align: "center", valign: "middle",
+  const raw = typeof text === "string" ? text : text.map(r => r.text).join("");
+  s.addText(text, Object.assign({ fontFace: QURANIC.test(raw) ? "Traditional Arabic" : FONT, color: INK, align: "center", valign: "middle",
     margin: 0, isTextBox: true, rtlMode: true, lang: "ar-SA", fit: "none", wrap: false }, o));
 }
 function shape(s, kind, o, name, isDeco) {
@@ -282,10 +288,10 @@ function maddSlide(s, units, th) {
   const cx = []; let right = G.right;
   for (let i = 0; i < n; i++) { cx.push(right - G.d); right -= G.d + G.gap; }
   // each circle gets the largest size that fits, centred; the madd circle shows the madd letter (smaller for the dagger alif)
-  const fit = units.map(u => centred(u.madd ? CFG.madd : u.full, u.madd ? 2 * G.fs : G.fs, inCircle(G.d, u.madd ? 10 : 8)));
+  const fit = units.map(u => centred(u.madd ? SHOW() : u.full, u.madd ? 2 * G.fs : G.fs, inCircle(G.d, u.madd ? 10 : 8)));
   const lpt = Math.min(...fit.filter((f, i) => !units[i].madd).map(f => f.pt));     // letters share one size
   units.forEach((u, i) => { if (!u.madd) fit[i] = centred(u.full, lpt, inCircle(G.d, 8)); });
-  if (CFG.small) units.forEach((u, i) => { if (u.madd) fit[i] = { pt: Math.round(SMALL * lpt), dy: fit[i].dy * SMALL * lpt / fit[i].pt }; });
+  if (CFG.small) units.forEach((u, i) => { if (u.madd) fit[i] = centred(SHOW(), lpt, inCircle(G.d, 10)); });
   else units.forEach((u, i) => { if (u.madd) fit[i] = centred(CFG.madd, Math.min(fit[i].pt, Math.round(lpt * 1.15)), inCircle(G.d, 10)); });
   const word = wordText(units), rf = centred(word, G.rs, inRect(G.pw, G.ph, 0.22)), rpt = rf.pt;
   units.forEach((u, i) => shape(s, T.ellipse, { x: cx[i], y: CY - G.d / 2, w: G.d, h: G.d, fill: { color: "FFFFFF" },
@@ -299,7 +305,7 @@ function maddSlide(s, units, th) {
     if (u.madd) {
       // the stretch: an arrow over the madd circle comes with the madd letter
       const kk = k++;
-      arText(s, CFG.madd, Object.assign({}, o, { objectName: `C${kk} M${i + 1} madd` }));
+      arText(s, CFG.small ? [{ text: "ـ", options: {} }, { text: CFG.madd, options: { color: DAGGER_RED } }] : CFG.madd, Object.assign({}, o, { objectName: `C${kk} M${i + 1} madd` }));
       shape(s, T.leftRightArrow, { x: cx[i] + G.d / 2 - 0.32, y: CY - G.d / 2 - 0.36, w: 0.64, h: 0.28,
         fill: { color: MADD_RING }, line: { width: 0 } }, `C${kk} S${i + 1} stretch`);
     } else {
@@ -348,7 +354,7 @@ function sentenceSlide(s, sentence, th) {
     if (fitRect(w, pw, PH, 0.2, pt) < pt) throw new Error("pill too small for " + w);
     shape(s, T.roundRect, { x, y: PY, w: pw, h: PH, rectRadius: 0.4, fill: { color: "FFFFFF" },
       line: { color: pillColors[i % 3], width: 6 } }, `C${i + 1} W${i + 1} pill`);
-    arText(s, w, { x, y: PY, w: pw, h: PH, fontSize: pt, objectName: `C${i + 1} W${i + 1} word` });
+    arText(s, CFG.small ? redDagger(w) : w, { x, y: PY, w: pw, h: PH, fontSize: pt, objectName: `C${i + 1} W${i + 1} word` });
     x -= GAP;
   });
   const n = words.length + 1;
@@ -360,7 +366,7 @@ function sentenceSlide(s, sentence, th) {
   if (fitRect(sentence, sw, SH, 0.22, spt) < spt) throw new Error("panel too small for " + sentence);
   shape(s, T.roundRect, { x: 5 - sw / 2, y: SY, w: sw, h: SH, rectRadius: 0.35, fill: { color: "FFFBE3" },
     line: { color: "F2B134", width: 6 } }, `C${n} S panel`);
-  arText(s, sentence, { x: 5 - sw / 2, y: SY, w: sw, h: SH, fontSize: spt, objectName: `C${n} S sentence` });
+  arText(s, CFG.small ? redDagger(sentence) : sentence, { x: 5 - sw / 2, y: SY, w: sw, h: SH, fontSize: spt, objectName: `C${n} S sentence` });
 }
 
 (async () => {
@@ -370,7 +376,7 @@ function sentenceSlide(s, sentence, th) {
     sentencesFor(file).forEach(sen => slides.push({ sentence: sen }));
     return { file, slides };
   });
-  const strings = MODE === "quran" ? QURAN.flatMap(q => [q[0], q[1]]) : [CFG.madd];
+  const strings = MODE === "quran" ? QURAN.flatMap(q => [q[0], q[1]]) : [CFG.madd, "ـ" + CFG.madd];
   plan.forEach(p => p.slides.forEach(sl => {
     if (sl.quran) return;
     if (sl.units) { sl.units.forEach(u => u.madd || strings.push(u.full, u.bare)); strings.push(wordText(sl.units)); }
