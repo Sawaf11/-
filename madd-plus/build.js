@@ -58,8 +58,8 @@ const slidesFor = X => {
 // the joined word, as runs (the dagger alif is a smaller alif inside the word)
 // the dagger alif is drawn as a small red alif BESIDE its letter (to the left), raised a little: a superscript "ا"
 const DAGGER_RED = "E03131", SHOW = () => (CFG.small ? "ا" : CFG.madd);
-// a new run every time (pptxgenjs changes the options it is given); 65% size, raised ~15% above the line
-const dag = pt => ({ text: "ا", options: { color: DAGGER_RED, fontSize: Math.round(SMALL * pt), baseline: 300 } });
+// a new run every time (pptxgenjs changes the options it is given); 80% size, raised a little above the line
+const dag = pt => ({ text: "ا", options: { color: DAGGER_RED, fontSize: Math.round(0.8 * pt), baseline: 250 } });
 const redDagger = (t, pt) => !t.includes("\u0670") ? t : t.split(/(\u0670)/).filter(Boolean).map(p => (p === "\u0670" ? dag(pt) : { text: p, options: {} }));
 function wordRuns(units, pt) {
   const runs = []; let acc = "";
@@ -293,7 +293,7 @@ function maddSlide(s, units, th) {
   const fit = units.map(u => centred(u.madd ? SHOW() : u.full, u.madd ? 2 * G.fs : G.fs, inCircle(G.d, u.madd ? 10 : 8)));
   const lpt = Math.min(...fit.filter((f, i) => !units[i].madd).map(f => f.pt));     // letters share one size
   units.forEach((u, i) => { if (!u.madd) fit[i] = centred(u.full, lpt, inCircle(G.d, 8)); });
-  if (CFG.small) units.forEach((u, i) => { if (u.madd) fit[i] = centred("ا", Math.round(SMALL * lpt), inCircle(G.d, 10)); });
+  if (CFG.small) units.forEach((u, i) => { if (u.madd) fit[i] = centred("ا", Math.round(0.8 * lpt), inCircle(G.d, 10)); });
   else units.forEach((u, i) => { if (u.madd) fit[i] = centred(CFG.madd, Math.min(fit[i].pt, Math.round(lpt * 1.15)), inCircle(G.d, 10)); });
   const word = wordText(units), rf = centred(word, G.rs, inRect(G.pw, G.ph, 0.22)), rpt = rf.pt;
   units.forEach((u, i) => shape(s, T.ellipse, { x: cx[i], y: CY - G.d / 2, w: G.d, h: G.d, fill: { color: "FFFFFF" },
