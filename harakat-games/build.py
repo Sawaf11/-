@@ -8,7 +8,7 @@ Instructions in English; every sound, letter and word to find is written in Arab
 Calm pastel backgrounds, soft flat pictures (art.js), sound effects (audio.py). A tap on the background does not move
 on; the round green button does. Built with kit.py (python-pptx).
 usage: python3 build.py <outdir> [preview]   (preview: hidden result slides stay visible, for LibreOffice pictures)"""
-import os, sys, random
+import os, sys, random, unicodedata
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit
 from kit import Deck, fx, snd
@@ -50,7 +50,7 @@ for v, ws in WORDS.items():                        # every word: letters with a 
 def en_fs(text, width_px, max_pt):                 # Arial bold: about 0.6 em per character
     return max(14, min(max_pt, int(width_px * 0.5 * 0.92 / (0.6 * max(1, len(text))))))
 def ar_fs(text, width_px, height_px, max_pt):      # Arabic in Arial: about 0.55 em per letter, harakat take no width
-    n = max(1, sum(1 for ch in text if ch not in "َُِـ" and ch != " ") + text.count("ـ") * 0.6)
+    n = max(1, sum(1 for ch in text if not unicodedata.combining(ch) and ch not in " ـ") + text.count("ـ") * 0.6 + text.count(" ") * 0.5)
     return max(20, min(max_pt, int(width_px * 0.5 * 0.85 / (0.6 * n)), int(height_px * 0.5 * 0.7)))
 def banner(sc, text, ar=None, y=30, h=120, w=1100):
     """English instruction; the sound / word to find is written in Arabic in its own white badge."""
@@ -109,7 +109,7 @@ class Game:
 
 # ---------- tap-the-right-ones games: balloons, fish, pop-up letters ----------
 PICK = {   # background, sound of a right tap, item drawing
-    "balloons": ("bg_sky", "pop"), "fish": ("bg_sea", "splash"), "popup": ("bg_meadow", "bonk")}
+    "balloons": ("bg_sky", "pop"), "fish": ("bg_sea", "splash"), "popup": ("bg_meadow", "bonk"), "cards": ("bg_stage", "ding")}
 def pick_game(g, P, kind, prompt, ar, right, wrong):
     """Every subset of the right answers already found is a slide; a wrong tap shows "Try again!" on the same picture."""
     bg, hit = PICK[kind]
@@ -129,6 +129,7 @@ def pick_game(g, P, kind, prompt, ar, right, wrong):
 def item_box(kind, k):
     if kind == "balloons": x, y = 130 + k * 350, 300 + (60 if k % 2 else 0); return x, y, 260, 450
     if kind == "fish": x, y = [(180, 260), (1050, 300), (560, 520), (1350, 600), (250, 760)][k]; return x, y, 360, 223
+    if kind == "cards": cx, cy = (1500, 960, 420)[k % 3], (380, 680)[k // 3]; return cx - 230, cy - 120, 460, 240   # right to left
     cx, cy = (520, 960, 1400)[k % 3], (560, 900)[k // 3]; return cx - 105, cy - 215, 210, 200
 
 def draw_pick(g, sc, kind, bg, prompt, ar, items, R, found, oops, look, st):
@@ -147,20 +148,24 @@ def draw_pick(g, sc, kind, bg, prompt, ar, items, R, found, oops, look, st):
         else: link = g.key(st(found) + "/oops")
         if kind == "balloons":
             a = sc.pic(f"balloon{(k + look[k]) % 6}", x, y, w, h, name=f"Balloon {k + 1}", link=link)
-            b = letter_shape(sc, t, x + 20, y + 37, 220, 220, 74, f"Balloon letter {k + 1} {t}", link=link)
+            b = letter_shape(sc, t, x + 20, y + 37, 220, 220, ar_fs(t, 190, 200, 74), f"Balloon letter {k + 1} {t}", link=link)
             move = dict(dx=0, dy=-0.025, dur=1500 + k * 170)
         elif kind == "fish":
             a = sc.pic(f"fish{(k + look[k]) % 5}", x, y, w, h, name=f"Fish {k + 1}", link=link)
-            b = letter_shape(sc, t, x + 85, y + 37, 150, 150, 48, f"Fish letter {k + 1} {t}", fill=WHITE, line="E6DDF5", link=link)
+            b = letter_shape(sc, t, x + 85, y + 37, 150, 150, ar_fs(t, 125, 140, 48), f"Fish letter {k + 1} {t}", fill=WHITE, line="E6DDF5", link=link)
             move = dict(dx=(0.09 if k % 2 else -0.09), dy=0, dur=2600 + k * 300)
+        elif kind == "cards":
+            a = None
+            b = letter_shape(sc, t, x, y, w, h, ar_fs(t, w - 50, h - 30, 80), f"Card {k + 1} {t}", fill=WHITE, line="F2A93B", kind="ROUNDED_RECTANGLE", link=link)
+            move = dict(dx=0, dy=-0.012, dur=1400 + k * 150)
         else:
             a = None
-            b = letter_shape(sc, t, x, y, w, h, 70, f"Tile {k + 1} {t}", fill="FFF8E6", line="C9A27A", kind="ROUNDED_RECTANGLE", link=link)
+            b = letter_shape(sc, t, x, y, w, h, ar_fs(t, 180, 180, 70), f"Tile {k + 1} {t}", fill="FFF8E6", line="C9A27A", kind="ROUNDED_RECTANGLE", link=link)
             move = dict(dx=0, dy=-0.03, dur=850 + k * 120)
         for sp in (a, b):
             if sp: auto.append(fx("move", sp, k * 150, rev=True, repeat="inf", **move))
     sc.on_load(auto)
-    bx, by = (1430, 160) if kind == "popup" else (1250, 830)   # pop-up tiles fill the bottom right
+    bx, by = (1430, 160) if kind == "popup" else (720, 830) if kind == "cards" else (1250, 830)   # keep clear of the answers
     if oops: bubble(sc, "Try again!", "E5536F", x=bx, y=by, w=480, h=230)
     if finished: bubble(sc, "Great job!", "2FB57A", x=bx, y=by, w=480, h=230); sc.on_load([snd("cheer", 500)])
 
@@ -179,7 +184,7 @@ def monster(g, P, prompt, ar, right, wrong):
             if ok and state == "yum": continue      # eaten
             link = None if state == "yum" else g.key("yum" if ok else "oops")
             sc.pic(f"food{(k + look[k]) % 5}", x, y, 300, 300, name=f"Food {k + 1}", link=link)
-            letter_shape(sc, t, x + 70, y + 85, 160, 160, 50, f"Food letter {k + 1} {t}", fill=WHITE, line="E6DDF5", link=link)
+            letter_shape(sc, t, x + 70, y + 85, 160, 160, ar_fs(t, 135, 140, 50), f"Food letter {k + 1} {t}", fill=WHITE, line="E6DDF5", link=link)
         if state == "oops": bubble(sc, "No, thanks!", "E5536F", x=520, y=170, w=520, h=240)
         if state == "yum": bubble(sc, "Yummy!", "E5536F", x=520, y=170, w=520, h=240); sc.on_load([snd("cheer", 700)])
     g.done()

@@ -1,7 +1,7 @@
 """Tiny game-layer on top of python-pptx: pictures, shapes, groups, slide links, and hand-written OOXML animation
 timelines (auto-start, click-triggered, sounds). Copied from fatha-adventure/src/pptx_kit.py and extended with
 groups (parent=), left-to-right English text (rtl=False) and a deck title."""
-import os, copy
+import os, copy, re
 from pptx import Presentation
 from pptx.util import Emu
 from pptx.opc.package import Part
@@ -17,6 +17,16 @@ E = lambda v: int(round(v * PX))
 NS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main'
 NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
 NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+# Quranic writing: dagger alif, hamzat al-wasl, small waw / yaa, head-of-khaa sukun, madd sign, small high letters
+QURANIC = re.compile('[\u0670\u0671\u06D6-\u06ED]')
+DAGGER_RED = 'E03131'                  # the dagger alif is drawn red, as in the madd decks
+SMALL_RED = '\u0670\u06E5\u06E6'
+NOJOIN_LEFT = 'اأإآٱدذرزوؤةءى'          # letters that do not join the next letter
+def place_dagger(t):
+    """As in the mushaf: inside a word the dagger alif stands in the joint between its letter and the next one. After a
+    letter that joins to the left a kashida (ـ) carries it, so the letters stay joined; elsewhere it sits on its letter."""
+    return re.sub('([\u0621-\u064A\u0671])([\u064B-\u065F\u06E1]*)\u0670(?=[\u0653\u0654\u06D6-\u06ED]*[\u0621-\u064A\u0671])',
+                  lambda m: m.group(1) + m.group(2) + ('' if m.group(1) in NOJOIN_LEFT else 'ـ') + '\u0670', t)
 PREVIEW = False                # False | 'start' (initial state) | 'end' (everything visible) - static builds for LibreOffice previews
 
 class Deck:
@@ -113,10 +123,14 @@ class Scene:
             tf.vertical_anchor = MSO_ANCHOR.MIDDLE
             p = tf.paragraphs[0]; p.alignment = PP_ALIGN.CENTER; p._p.get_or_add_pPr().set('rtl', '1' if rtl else '0')
             runs = text if isinstance(text, list) else [(text, color)]
+            plain = ''.join(t for t, _ in runs)
+            font = 'Traditional Arabic' if QURANIC.search(plain) else 'Arial'   # Arial has no Quranic marks
+            if font != 'Arial':                    # dagger alif in the joint (on a kashida); small alif / waw / yaa red
+                runs = [(part, DAGGER_RED if part in SMALL_RED else col) for tx, col in runs for part in re.split('([\u0670\u06E5\u06E6])', place_dagger(tx)) if part]
             for tx, col in runs:
                 r = p.add_run(); r.text = tx
-                r.font.size = Pt(fs); r.font.bold = bold; r.font.name = 'Arial'; r.font.color.rgb = RGBColor.from_string(col)
-                rPr = r._r.get_or_add_rPr(); rPr.set('lang', 'ar-SA' if rtl else 'en-US'); etree.SubElement(rPr, f'{{{NS_A}}}cs').set('typeface', 'Arial')
+                r.font.size = Pt(fs); r.font.bold = bold; r.font.name = font; r.font.color.rgb = RGBColor.from_string(col)
+                rPr = r._r.get_or_add_rPr(); rPr.set('lang', 'ar-SA' if rtl else 'en-US'); etree.SubElement(rPr, f'{{{NS_A}}}cs').set('typeface', font)
             sp._element.nvSpPr.cNvPr.set('descr', ''.join(t for t, _ in runs))
         if link: self.links.append((sp, link))
         return sp.shape_id

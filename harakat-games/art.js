@@ -62,6 +62,15 @@ ITEMS.push({ name: "wagon", w: 300, h: 260, svg: svg(300, 260, `<rect x="15" y="
   ITEMS.push({ name: `giftlid${k}`, w: 340, h: 170, svg: svg(340, 170, `<path d="M170 70 C 110 0 60 40 110 72 Z M170 70 C 230 0 280 40 230 72 Z" fill="${r}" stroke="${OL}" stroke-width="6" stroke-linejoin="round"/><rect x="10" y="70" width="320" height="90" rx="16" fill="${c}" stroke="${OL}" stroke-width="6"/><rect x="146" y="70" width="48" height="90" fill="${r}" stroke="${OL}" stroke-width="5"/>`) });
 });
 ITEMS.push({ name: "blank", w: 4, h: 4, svg: svg(4, 4, "") });
+// ---- caterpillars (head on the left): short = a short sound, long = a stretched (madd) sound ----
+const caterpillar = n => { const W = 150 + n * 95; return { w: W, h: 230, svg: svg(W, 230, `<defs>${shade("g", "#b8f0a0", "#5fc56a")}${shade("h", "#ffe08a", "#f2b23b")}</defs>
+  ${Array.from({ length: n }, (_, k) => { const x = W - 70 - k * 95, y = 140 + (k % 2 ? -12 : 0);
+    return `<path d="M${x - 15} ${y + 45} l-6 28 M${x + 15} ${y + 45} l6 28" stroke="${OL}" stroke-width="6" stroke-linecap="round"/><circle cx="${x}" cy="${y}" r="58" fill="url(#g)" stroke="${OL}" stroke-width="6"/>`; }).join("")}
+  <path d="M70 55 q -15 -40 -30 -45 M110 55 q 10 -40 30 -45" stroke="${OL}" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="40" cy="10" r="9" fill="#ff8fa3"/><circle cx="140" cy="10" r="9" fill="#ff8fa3"/>
+  <circle cx="90" cy="115" r="68" fill="url(#h)" stroke="${OL}" stroke-width="6"/>
+  <circle cx="68" cy="100" r="13" fill="${OL}"/><circle cx="112" cy="100" r="13" fill="${OL}"/><circle cx="64" cy="96" r="4" fill="#fff"/><circle cx="108" cy="96" r="4" fill="#fff"/>
+  <path d="M70 140 q 20 18 40 0" stroke="${OL}" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="130" rx="12" ry="7" fill="#ff8fa3" opacity=".7"/><ellipse cx="130" cy="130" rx="12" ry="7" fill="#ff8fa3" opacity=".7"/>`) }; };
+ITEMS.push(Object.assign({ name: "caterpillar_short" }, caterpillar(1)), Object.assign({ name: "caterpillar_long" }, caterpillar(6)));
 // ---- calm backgrounds (1920x1080) ----
 const BG = {
   sky: `<rect width="1920" height="1080" fill="url(#s)"/><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe9ff"/><stop offset="1" stop-color="#fdeef4"/></linearGradient></defs>
@@ -83,6 +92,18 @@ const BG = {
     ${[[150, 900], [1750, 880], [300, 300], [1650, 320]].map(([x, y], k) => `<circle cx="${x}" cy="${y}" r="${40 + k * 6}" fill="${["#ffd8a8", "#b5e8ff", "#ffb3c6", "#c8f0c8"][k]}" opacity=".6"/>`).join("")}`,
   title: `<defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe5ec"/><stop offset=".5" stop-color="#e8f4ff"/><stop offset="1" stop-color="#eaffea"/></linearGradient></defs><rect width="1920" height="1080" fill="url(#s)"/>
     ${[[200, 200, "#ffb3c6"], [1700, 220, "#b5e8ff"], [320, 880, "#c8f0c8"], [1600, 860, "#ffd8a8"]].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="120" fill="${c}" opacity=".55"/>`).join("")}`,
+  garden: `<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7e0"/><stop offset="1" stop-color="#eefbe6"/></linearGradient></defs><rect width="1920" height="1080" fill="url(#s)"/>
+    <path d="M0 860 Q 960 780 1920 860 L1920 1080 L0 1080Z" fill="#cdeccf"/>
+    ${Array.from({ length: 14 }, (_, k) => { const x = 70 + k * 138, y = 900 + (k % 3) * 40, c = ["#ffb3c6", "#ffd8a8", "#c3b5ff", "#b5e8ff"][k % 4];
+      return `<path d="M${x} ${y} l0 70" stroke="#8bc98a" stroke-width="8"/>${[0, 72, 144, 216, 288].map(r => `<ellipse cx="${x}" cy="${y - 18}" rx="12" ry="20" fill="${c}" transform="rotate(${r} ${x} ${y})"/>`).join("")}<circle cx="${x}" cy="${y}" r="10" fill="#ffd166"/>`; }).join("")}`,
+  stage: `<rect width="1920" height="1080" fill="#fbf4ff"/><rect y="860" width="1920" height="220" fill="#f1e2d0"/><rect y="850" width="1920" height="20" fill="#e2c9ae"/>
+    <path d="M0 0 L330 0 Q 260 400 300 850 L0 850Z M1920 0 L1590 0 Q 1660 400 1620 850 L1920 850Z" fill="#f7c6d4"/>
+    <path d="M0 0 L1920 0 L1920 90 Q 960 150 0 90Z" fill="#f2a9be"/>${Array.from({ length: 12 }, (_, k) => `<circle cx="${80 + k * 160}" cy="96" r="12" fill="#ffd166"/>`).join("")}`,
+  mosque: `<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6f0ff"/><stop offset="1" stop-color="#fff3e6"/></linearGradient></defs><rect width="1920" height="1080" fill="url(#s)"/>
+    <g fill="#e4dcf5" opacity=".9"><rect x="120" y="760" width="1680" height="320"/><path d="M760 760 Q 760 560 960 520 Q 1160 560 1160 760Z"/><rect x="955" y="470" width="10" height="60"/><circle cx="960" cy="465" r="12"/>
+    <path d="M330 760 Q 330 660 420 640 Q 510 660 510 760Z M1410 760 Q 1410 660 1500 640 Q 1590 660 1590 760Z"/>
+    <rect x="200" y="420" width="60" height="340"/><path d="M190 420 L230 340 L270 420Z"/><rect x="1660" y="420" width="60" height="340"/><path d="M1650 420 L1690 340 L1730 420Z"/></g>
+    ${[[300, 160], [700, 110], [1250, 140], [1600, 190], [1000, 90]].map(([x, y]) => `<path d="M${x} ${y - 14} l4 10 l11 0 l-9 7 l3 11 l-9 -6 l-9 6 l3 -11 l-9 -7 l11 0z" fill="#ffd166" opacity=".8"/>`).join("")}`,
 };
 Object.entries(BG).forEach(([n, inner]) => ITEMS.push({ name: `bg_${n}`, w: 1920, h: 1080, svg: svg(1920, 1080, inner), jpg: true }));
 
