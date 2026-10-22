@@ -87,7 +87,7 @@ QUIZ = {   # background, instruction, buttons left to right (English) or right t
 ASPECT = {}
 def pic_fit(sc, img, cx, cy, maxw, maxh, **kw):    # a picture at its own shape, centred, as big as fits
     if img not in ASPECT:
-        p = os.path.join(kit.IMG, img + ".png")
+        p = kit.find(kit.IMG_DIRS, img + ".png")
         with Image.open(p) as im: ASPECT[img] = im.width / im.height
     a = ASPECT[img]; w = min(maxw, maxh * a); h = w / a
     return sc.pic(img, cx - w / 2, cy - h / 2, w, h, **kw)

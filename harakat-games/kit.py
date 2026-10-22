@@ -12,6 +12,12 @@ from lxml import etree
 HERE = os.path.dirname(os.path.abspath(__file__))
 IMG = os.path.join(HERE, 'assets', 'img')
 AUD = os.path.join(HERE, 'assets', 'audio')
+IMG_DIRS, AUD_DIRS = [IMG], [AUD]  # a deck may put its own folders first
+def find(dirs, *names):
+    for d in dirs:
+        for n in names:
+            if os.path.exists(os.path.join(d, n)): return os.path.join(d, n)
+    raise FileNotFoundError(names)
 PX = 6350                      # EMU per design pixel (1920x1080 design canvas)
 E = lambda v: int(round(v * PX))
 NS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main'
@@ -41,7 +47,7 @@ class Deck:
         s = Scene(self, key, **kw); self.slides[key] = s; return s
     def sound_part(self, name):
         if name not in self.snd_parts:
-            blob = open(os.path.join(AUD, name + '.wav'), 'rb').read()
+            blob = open(find(AUD_DIRS, name + '.wav'), 'rb').read()
             self.snd_parts[name] = Part(PackURI(f'/ppt/media/snd_{name}.wav'), 'audio/wav', self.prs.part.package, blob)
         return self.snd_parts[name]
     def save(self, path):
@@ -60,8 +66,7 @@ class Scene:
     # ---- shapes ----
     def pic(self, img, x, y, w, h, name=None, hidden=False, link=None, descr='', rot=0, parent=None):
         if PREVIEW == 'start' and hidden: return None
-        ext = 'jpeg' if os.path.exists(os.path.join(IMG, img + '.jpeg')) else 'png'
-        p = (parent or self.slide.shapes).add_picture(os.path.join(IMG, f'{img}.{ext}'), Emu(E(x)), Emu(E(y)), Emu(E(w)), Emu(E(h)))
+        p = (parent or self.slide.shapes).add_picture(find(IMG_DIRS, img + '.jpeg', img + '.png'), Emu(E(x)), Emu(E(y)), Emu(E(w)), Emu(E(h)))
         p.name = name or img
         p._element.nvPicPr.cNvPr.set('descr', descr or (name or img).replace('_', ' '))
         if rot: p.rotation = rot
