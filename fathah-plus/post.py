@@ -112,3 +112,8 @@ for it in zin.infolist():
     zout.writestr(it, d)
 for k, b in SOUNDS.items(): zout.writestr(f"ppt/media/{k}.wav", b)
 zout.close()
+
+# make the file valid PresentationML (see tools/ooxml_fix.py)
+sys.path.insert(0, __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)), "..", "tools"))
+from ooxml_fix import fix
+fix(dst)
