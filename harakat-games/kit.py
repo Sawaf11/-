@@ -39,8 +39,8 @@ class Deck:
         self.prs.save(path)
 
 class Scene:
-    def __init__(self, deck, key, fade=False, hidden_slide=False, adv=True):
-        self.d, self.key, self.fade, self.hidden_slide, self.adv = deck, key, fade, hidden_slide, adv
+    def __init__(self, deck, key, fade=False, hidden_slide=False, adv=True, tr_snd=None):
+        self.d, self.key, self.fade, self.hidden_slide, self.adv, self.tr_snd = deck, key, fade, hidden_slide, adv, tr_snd
         self.steps = []
         self.slide = deck.prs.slides.add_slide(deck.layout)
         self.auto, self.trig, self.links = [], [], []
@@ -156,10 +156,14 @@ class Scene:
         if PREVIEW: return
         sld = self.slide._element
         if self.hidden_slide: sld.set('show', '0')
-        if not self.adv or self.fade:
+        if not self.adv or self.fade or self.tr_snd:
             tr = etree.SubElement(sld, f'{{{NS_P}}}transition')
             if not self.adv: tr.set('advClick', '0')
             if self.fade: tr.set('spd', 'med'); etree.SubElement(tr, f'{{{NS_P}}}fade')
+            if self.tr_snd:                        # the sound plays whenever the slide opens, also through a link
+                rid = self.sound_rid(self.tr_snd)
+                s = etree.SubElement(etree.SubElement(etree.SubElement(tr, f'{{{NS_P}}}sndAc'), f'{{{NS_P}}}stSnd'), f'{{{NS_P}}}snd')
+                s.set(f'{{{NS_R}}}embed', rid); s.set('name', self.tr_snd + '.wav')
         if self.music: self._music_shape()
         xml = timing_xml(self)
         if xml is not None: sld.append(etree.fromstring(xml))
